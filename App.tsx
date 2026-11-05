@@ -39,7 +39,7 @@ type Spike = { label: string; run: (ctx: PageCtx) => Promise<SpikeResult> };
 
 const SPIKES: Spike[] = [
   { label: '1. Plain rect (points + pressure only)', run: ctx => plainRect(ctx, false) },
-  { label: '1b. Plain rect + full metadata', run: ctx => plainRect(ctx, true) },
+  { label: '1b. Plain rect (metadata ignored since GH-3)', run: ctx => plainRect(ctx, true) },
   { label: '2. Pressure ladder (4 pen types)', run: pressureLadder },
   { label: '2b. Pressure sweep (pen 16, 400 to 3600)', run: pressureSweep },
   { label: '3. Hand-drawn rect (tagged with recipe)', run: handDrawnRect },

@@ -7,7 +7,7 @@ import { call } from './sdk';
 import { handDrawnOutline, LOCKED, peakThickness, pressureFromWidth, toPoints, type Pt } from './handdrawn';
 import { constant, insertStrokes, PEN, ramp, sampleLine, type PageCtx, type StrokeSpec } from './strokes';
 import type { GeoSpec, Recipe } from './device/contracts';
-import { insertPlan } from './device';
+import { insertPlan, readLasso } from './device';
 
 export type SpikeResult = { rect: Rect; log: string };
 
@@ -159,7 +159,7 @@ export async function dashGap(ctx: PageCtx): Promise<SpikeResult> {
     rect,
     log:
       'Dash test inserted bottom-left, three rows:\n' +
-      'row 1: one stroke, flagDraw false in the middle third\n' +
+      'row 1: one stroke, flagDraw false in the middle third (ignored since GH-3, renders solid)\n' +
       'row 2: one stroke on pen 16, pressure 0 in the middle third\n' +
       'row 3: separate dash strokes (reference)\n' +
       'Look for: does row 1 or 2 show a gap? Then lasso row 3 and see whether all dashes select together.',
@@ -388,20 +388,9 @@ export async function handDrawnBoxAt(ctx: PageCtx, rect: Rect, seed: number): Pr
  * delete the selection and render the shape fresh into that box.
  */
 export async function redrawLasso(ctx: PageCtx): Promise<SpikeResult> {
-  const elements = await call<any[]>('getLassoElements', PluginCommAPI.getLassoElements());
-  const tagged = (elements ?? []).map(e => e?.userData).filter((u: unknown) => typeof u === 'string' && u.length > 0);
-  const box = await call<Rect>('getLassoRect', PluginCommAPI.getLassoRect());
-  if (tagged.length === 0) {
-    return {
-      rect: box,
-      log: `Redraw: ${elements?.length ?? 0} lassoed elements, none carries a Stencil recipe (userData empty). Nothing changed.`,
-    };
-  }
-  let recipe: { seed: number };
-  try {
-    recipe = JSON.parse(tagged[0]);
-  } catch {
-    return { rect: box, log: `Redraw: userData present but not a recipe: ${tagged[0].slice(0, 80)}` };
+  const { rect: box, recipe, count } = await readLasso();
+  if (!recipe) {
+    return { rect: box, log: `Redraw: ${count} lassoed elements, none carries a valid Stencil recipe. Nothing changed.` };
   }
   await call('deleteLassoElements', PluginCommAPI.deleteLassoElements());
   const pad = 6;
@@ -410,7 +399,7 @@ export async function redrawLasso(ctx: PageCtx): Promise<SpikeResult> {
   return {
     rect,
     log:
-      `Redraw: ${elements.length} elements, ${tagged.length} tagged, recipe ${tagged[0]}.\n` +
+      `Redraw: ${count} elements, recipe ${recipe.shape} seed ${recipe.seed}.\n` +
       `Lasso box ${Math.round(box.left)},${Math.round(box.top)} to ${Math.round(box.right)},${Math.round(box.bottom)}; deleted and redrawn into it.`,
   };
 }
