@@ -1,0 +1,14 @@
+{
+  "name": "Stencil",
+  "desc": "Diagram shapes as stretchable vector strokes. Spike build: stroke rendering, pressure, dashes and lasso checks.",
+  "iconPath": "assets/icon.png",
+  "versionName": "0.0.1",
+  "versionCode": "1",
+  "pluginID": "k3q8v2stencil0a1",
+  "pluginKey": "stencil",
+  "jsMainPath": "index",
+  "uses-permissions": [
+    "plugin.permission.FILE:READ",
+    "plugin.permission.FILE:WRITE"
+  ]
+}

@@ -1,0 +1,512 @@
+<title>Stencil Design Review</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,500;8..60,600&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --paper:#f4f3ef; --paper-2:#eceae4; --ink:#1c1b19; --ink-2:#4a4844; --ink-3:#7a7772;
+  --rule:#d6d3cc; --eink:#e9e8e3; --eink-ink:#111; --g157:#9d9d9d; --g201:#c9c9c9;
+  --accent:#4b5f73;
+  --serif:"Source Serif 4",Georgia,serif; --sans:"Source Sans 3",system-ui,sans-serif; --mono:"JetBrains Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --paper:#1b1b19; --paper-2:#242320; --ink:#ecebe6; --ink-2:#bdbab2; --ink-3:#8d8a83; --rule:#3a3935; --accent:#9db2c7;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --paper:#1b1b19; --paper-2:#242320; --ink:#ecebe6; --ink-2:#bdbab2; --ink-3:#8d8a83; --rule:#3a3935; --accent:#9db2c7;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.5}
+.wrap{max-width:1100px;margin:0 auto;padding-inline:20px;padding-block:40px 80px}
+h1,h2,h3{font-family:var(--serif);font-weight:600;text-wrap:balance;margin:0}
+h1{font-size:2.4rem;line-height:1.1}
+h2{font-size:1.5rem;margin-top:64px;padding-top:20px;border-top:1px solid var(--rule)}
+h3{font-size:1.1rem;margin-top:28px}
+p{max-width:66ch;margin:12px 0}
+.lede{font-size:1.1rem;color:var(--ink-2);max-width:60ch}
+.eyebrow{font-family:var(--mono);font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+table{border-collapse:collapse;width:100%;font-size:.95rem;margin-top:16px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--rule);vertical-align:top}
+th{font-weight:600;color:var(--ink-2);font-size:.85rem}
+td:first-child{font-weight:600;white-space:nowrap}
+code{font-family:var(--mono);font-size:.85em;background:var(--paper-2);padding:1px 5px;border-radius:3px}
+.tablewrap{overflow-x:auto}
+.note{color:var(--ink-3);font-size:.9rem}
+.changed td:first-child::after{content:" ·";color:var(--accent)}
+
+/* Device frames */
+.frames{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:32px;margin-top:20px}
+.frame-card h3{margin-top:0}
+.frame-card .eyebrow{display:block;margin-bottom:6px}
+.frame-card p{font-size:.93rem;margin-top:10px}
+.device{width:100%;max-width:400px;aspect-ratio:3/4;background:var(--eink);color:var(--eink-ink);border:11px solid #2a2a2a;border-radius:11px;position:relative;overflow:hidden;font-family:var(--sans);margin-top:14px;box-shadow:0 1px 0 #555 inset}
+.screen{position:absolute;inset:0;display:flex;flex-direction:column}
+.topbar{display:flex;justify-content:space-between;align-items:center;padding:9px 14px;border-bottom:1px solid #111;font-size:13px}
+.topbar b{font-weight:600}
+.topbar span{color:#444}
+.tabs{display:flex;border-bottom:1px solid #111}
+.tab{flex:1;text-align:center;font-size:12px;padding:7px 0;cursor:pointer;color:#444;user-select:none}
+.tab.on{border-bottom:3px solid #111;color:#111;font-weight:600}
+.tab.off{color:#aaa;text-decoration:line-through}
+.stylebar{display:flex;gap:7px;padding:8px 12px;border-bottom:1px solid #999;flex-wrap:wrap;background:#dedcd6}
+.chipgrp{display:flex;border:1px solid #111;border-radius:4px;overflow:hidden;background:#f2f1ec}
+.chip{display:flex;align-items:center;justify-content:center;width:24px;height:19px;border-right:1px solid #111;cursor:pointer}
+.chip svg{width:18px;height:12px;display:block}
+.chip:last-child{border-right:0}
+.chip.on{background:#111}
+.chip.on svg .ink{stroke:#f2f1ec}
+.chip.on svg .inkf{fill:#f2f1ec}
+.chip.on svg .pap{fill:#111}
+.body{flex:1;overflow:hidden;padding:10px 12px;display:flex;flex-direction:column;gap:6px}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.cell{aspect-ratio:1/1;border:1px solid #777;border-radius:4px;display:flex;align-items:center;justify-content:center;background:#f2f1ec}
+.cell svg{width:80%;height:80%}
+.cell.sel{outline:2px solid #111;outline-offset:-2px}
+.wrapmode .cell{aspect-ratio:5/3}
+.bottombar{display:flex;justify-content:space-between;padding:7px 14px;border-top:1px solid #111;font-size:12px}
+.bottombar span{color:#444}
+.wrapline{font-size:11px;color:#333;padding:2px 0 4px}
+.screen.page{background:radial-gradient(#b9b7b1 0.8px, transparent 0.9px) 0 0/14px 14px, var(--eink)}
+.panelmock{position:absolute;left:5%;top:4%;width:52%;bottom:4%;background:#f2f1ec;border:1px solid #111;border-radius:5px;display:flex;flex-direction:column;overflow:hidden}
+.panelmock .body{padding:8px}
+.grid.g2{grid-template-columns:repeat(2,1fr)}
+.hint{font-size:9.5px;color:#333;padding:6px 10px;border-top:1px solid #999;text-align:center}
+.band{position:absolute;left:64%;top:30%;width:30%;height:16%;border:2px solid #111}
+.pen{position:absolute;left:94%;top:46%;width:5px;height:5px;border-radius:50%;background:#111}
+.pagemark{position:absolute}
+.pagemark svg{width:100%;height:100%;display:block}
+[data-placed]{left:64%;top:56%;width:30%;height:14%}
+[data-redrawn]{left:18%;top:30%;width:64%;height:28%}
+.lassobox{position:absolute;left:16%;top:27%;width:68%;height:34%;border:1px dashed #111}
+.lassobox::before,.lassobox::after{content:"";position:absolute;width:7px;height:7px;background:#111;border-radius:50%}
+.lassobox::before{left:-4px;top:-4px}.lassobox::after{right:-4px;bottom:-4px}
+.lassobar{position:absolute;left:16%;top:64%;display:flex;border:1px solid #111;border-radius:4px;overflow:hidden;background:#f2f1ec;font-size:10px}
+.lassobar span{padding:4px 8px;border-right:1px solid #111}
+.lassobar span:last-child{border-right:0}
+.lassobar span.on{background:#111;color:#f2f1ec}
+.strip{position:absolute;left:4%;right:4%;top:3%;height:9%;background:#f2f1ec;border:1px solid #111;border-radius:5px;display:flex;align-items:center;gap:6px;padding:0 6px}
+.strippreview{width:12%;height:72%;border:1px solid #777;border-radius:3px;background:#fff;display:flex;align-items:center;justify-content:center}
+.strippreview svg{width:85%;height:85%}
+.strip .stylebar{border:0;background:transparent;padding:0;flex:1;gap:4px}
+.strip .chip{width:20px;height:16px}
+.strip .chip svg{width:15px;height:10px}
+.stripx{margin-left:auto;font-size:13px;width:20px;height:20px;border:1px solid #111;border-radius:3px;display:flex;align-items:center;justify-content:center;background:#fff}
+.stripx.on{background:#111;color:#f2f1ec}
+[data-placed]{left:30%;top:44%;width:40%;height:18%}
+.band{left:30%;top:44%;width:40%;height:18%}
+.pen{left:70%;top:62%}
+[data-redrawn]{left:18%;top:30%;width:64%;height:28%}
+
+/* Shape lab */
+.lab{margin-top:18px;border:1px solid var(--rule);border-radius:8px;overflow:hidden}
+.labbar{display:flex;gap:18px;flex-wrap:wrap;padding:14px 16px;border-bottom:1px solid var(--rule);background:var(--paper-2);align-items:center}
+.ctl{display:flex;align-items:center;gap:8px;font-size:.85rem}
+.ctl .eyebrow{font-size:.68rem}
+.seg{display:flex;border:1px solid var(--ink-3);border-radius:4px;overflow:hidden}
+.seg button{all:unset;cursor:pointer;padding:4px 8px;display:flex;align-items:center;color:var(--ink-2);border-right:1px solid var(--ink-3)}
+.seg button svg{width:22px;height:14px;display:block}
+.seg button svg .ink{stroke:var(--ink)} .seg button svg .inkf{fill:var(--ink)} .seg button svg .pap{fill:var(--paper)}
+.seg button:last-child{border-right:0}
+.seg button.on{background:var(--ink)}
+.seg button.on svg .ink{stroke:var(--paper)} .seg button.on svg .inkf{fill:var(--paper)} .seg button.on svg .pap{fill:var(--ink)}
+.seg button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.tune{display:flex;gap:16px;flex-wrap:wrap;padding:10px 16px;border-bottom:1px solid var(--rule);font-size:.8rem;color:var(--ink-2);align-items:center;background:var(--paper)}
+.tune label{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:.72rem}
+.tune input[type=range]{width:110px;accent-color:var(--accent)}
+.tune output{min-width:3ch;text-align:right;font-variant-numeric:tabular-nums}
+.sheet{background:#ecebe6;color:#111;padding:20px 16px 8px}
+.sheet h4{margin:14px 0 8px;font-family:var(--mono);font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:#555;font-weight:500}
+.shapes{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px}
+.shape{display:flex;flex-direction:column;align-items:center;gap:4px}
+.shape svg{width:100%;height:auto;background:#f2f1ec;border:1px dashed #bbb}
+.shape span{font-size:.75rem;color:#333;font-family:var(--mono)}
+.shape small{font-size:.65rem;color:#777;font-family:var(--mono)}
+.hero{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin-top:14px}
+.hero figure{margin:0}
+.hero svg{width:100%;height:auto;background:#f2f1ec;border:1px solid var(--rule);border-radius:4px}
+.hero figcaption{font-size:.8rem;color:var(--ink-3);font-family:var(--mono);margin-top:4px}
+
+/* Storyboard */
+.story{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px;margin-top:16px}
+.panel{display:flex;flex-direction:column;gap:8px}
+.panel svg{width:100%;height:auto;background:#ecebe6;border:1px solid var(--rule);border-radius:4px}
+.panel p{font-size:.9rem;margin:0}
+.panel .eyebrow{font-size:.7rem}
+
+ul{padding-left:20px}li{margin:6px 0;max-width:70ch}
+.spikes li b{font-weight:600}
+@media (max-width:520px){h1{font-size:1.9rem}}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+  <span class="eyebrow">Supernote plugin · design review · revision 4 · 5 Nov 2026</span>
+  <h1>Stencil</h1>
+  <p class="lede">A Supernote plugin that places clean or hand-drawn diagram shapes on the page with the pen. Revision 3 folds in six rounds of device spikes on a Manta: shapes are sized at insert time by tap or drag, never scaled afterwards, and every shape carries a recipe so it can be redrawn into a new box.</p>
+
+  <h2>Decisions</h2>
+  <p class="note">Rows marked with a dot changed in this revision.</p>
+  <div class="tablewrap">
+  <table>
+    <tr><th>Topic</th><th>Decision</th><th>Reasoning</th></tr>
+    <tr><td>Scope v1</td><td>Shape palette, wrap, redraw</td><td>No transform action: the native lasso scales everything proportionally and degrades it, and the engine's own resize degrades too. Size is set at insert and fixed by regeneration.</td></tr>
+    <tr><td>Device</td><td>Manta, page read at runtime</td><td>Defaults tuned for 1920 × 2560 px. Page size comes from <code>getPageSize</code> so Nomad works later without changes.</td></tr>
+    <tr class="changed"><td>Carriers</td><td>Clean = geometry element, hand-drawn = pen 16 strokes</td><td>Geometry gives one element per shape, undo, and lasso on insert, and needs no file permission. Strokes on the pressure pen are the only way to vary width along a line. Measured on device.</td></tr>
+    <tr class="changed"><td>Insert</td><td>Panel to choose, strip to place</td><td>The panel opens on the left with tabs, style bar and grid. Tapping a shape collapses it into a strip along the top edge showing the shape preview, the style glyphs and a close mark; the rest of the page is live. Tap places at default size, drag sizes. The strip vanishes, the shape stays lassoed. Proven in spike round 6.</td></tr>
+    <tr class="changed"><td>Armed on open</td><td>Opens straight into the strip</td><td>Stencil remembers the last shape and style. Opening it arms that shape at once, so a run of boxes is tap Stencil, drag, repeat. Tap the preview in the strip to expand the panel and switch shapes.</td></tr>
+    <tr class="changed"><td>Resize</td><td>Never scale, redraw from recipe</td><td>Every Stencil element carries shape id, style and seed in <code>userData</code>. Lasso, pull the native handle, tap Stencil: the strip appears armed with that recipe, restyle if wanted, tap apply, and the selection is rendered fresh into the lasso box. Clean shapes go in as geometry page elements so they carry a recipe too, at the cost of native undo.</td></tr>
+    <tr><td>Palette layout</td><td>Family tabs</td><td>E-ink scrolls badly, so each family gets one panel of cells. The tab is remembered between opens.</td></tr>
+    <tr><td>Style bar</td><td>Glyphs, four groups</td><td>Weight 3, line 3, fill 4, look 2. Applies to the next insert, remembered across sessions.</td></tr>
+    <tr class="changed"><td>Hand-drawn look</td><td>One bow per stroke, width profile, overshoot</td><td>Constants locked at bow 2, swing 0.4, overshoot 3 in preview units. On device the stroke thickness is set to the profile's peak and pressure is mapped through the measured curve, so a hand-drawn shape reads as dark as its clean twin.</td></tr>
+    <tr class="changed"><td>Dashes and hatch</td><td>Separate strokes</td><td>Neither the pen-up flag nor zero pressure makes a gap inside one stroke. A dashed box is about forty elements; redraw keeps them one shape.</td></tr>
+    <tr><td>Wrap</td><td>Same lasso button, expanded panel</td><td>Lasso handwriting, tap Stencil: the panel opens expanded and tapping a shape wraps the selection at once. Position and size are known, so no strip and no page tap.</td></tr>
+    <tr><td>Families v1</td><td>Basic, Flowchart, Arrows</td><td>Architecture icons deferred. Arrows are dumb: drag sets their length and direction.</td></tr>
+    <tr><td>Labels</td><td>Handwriting only</td><td>No typed text boxes.</td></tr>
+    <tr><td>Audience</td><td>Personal first</td><td>Clean enough to publish later, no localisation or onboarding now. Prior art: sn-shapes, Palette, Snap, all open source.</td></tr>
+  </table>
+  </div>
+
+  <h2>Panel, then strip</h2>
+  <p>Choosing happens in a panel on the left of a transparent layer. Placing happens from a strip along the top, with the whole page free below it. The tabs and glyph chips work in both and drive the shape sheet further down.</p>
+  <div class="frames">
+    <div class="frame-card">
+      <span class="eyebrow">1 · Choose</span>
+      <h3>Panel</h3>
+      <div class="device"><div class="screen page">
+        <div class="panelmock">
+          <div class="topbar"><b>Stencil</b><span>×</span></div>
+          <div class="tabs" data-tabs>
+            <div class="tab on" data-tab="basic">Basic</div>
+            <div class="tab" data-tab="flow">Flow</div>
+            <div class="tab" data-tab="arrow">Arrows</div>
+          </div>
+          <div class="stylebar" data-stylebar></div>
+          <div class="body"><div class="grid g2" data-grid data-family="basic"></div></div>
+          <div class="hint">Tap a shape to arm it</div>
+        </div>
+      </div></div>
+      <p>Opens here only when no shape is remembered, or when you tap the preview in the strip. Tapping a cell arms that shape with the current style and collapses the panel.</p>
+    </div>
+    <div class="frame-card">
+      <span class="eyebrow">2 · Place</span>
+      <h3>Strip</h3>
+      <div class="device"><div class="screen page">
+        <div class="strip">
+          <div class="strippreview" data-strippreview></div>
+          <div class="stylebar strip-style" data-stylebar></div>
+          <span class="stripx">×</span>
+        </div>
+        <div class="pagemark" data-placed></div>
+        <div class="band"></div>
+        <div class="pen"></div>
+      </div></div>
+      <p>The strip shows what will be placed. Glyphs are live, so you can still change weight, line, fill or look. Tap the page to place at default size, drag to size. Then the strip goes and the shape stays lassoed.</p>
+    </div>
+    <div class="frame-card">
+      <span class="eyebrow">3 · Redraw</span>
+      <h3>From the lasso toolbar</h3>
+      <div class="device"><div class="screen page">
+        <div class="strip">
+          <div class="strippreview" data-redrawpreview></div>
+          <div class="stylebar strip-style" data-stylebar></div>
+          <span class="stripx on">✓</span>
+        </div>
+        <div class="pagemark" data-redrawn></div>
+        <div class="lassobox"></div>
+        <div class="lassobar"><span>Copy</span><span>Cut</span><span>Delete</span><span class="on">Stencil</span></div>
+      </div></div>
+      <p>Lasso a Stencil shape, pull the native handle, tap Stencil. The strip appears armed with that shape's recipe; restyle if you like, then tap the check. The degraded ink is deleted and the shape is rendered fresh into the lasso box.</p>
+    </div>
+  </div>
+
+  <h2>Hand-drawn look</h2>
+  <p>The reference is Excalidraw's lowest sloppiness: a shape a product designer would draw by hand, not a shaky one. The renderer below is the one the plugin runs. It splits each outline at corners into pen strokes, gives each stroke one gentle bow, a width profile over its length and a little overshoot where strokes meet. On the device the width profile becomes pressure on pen type 16: the stroke thickness is set to the profile's peak and each sample's pressure comes from the measured curve, 400 for a third of full width up to 1600 for full width. The constants were tuned here and confirmed on the Manta.</p>
+  <div class="hero" data-hero></div>
+
+  <h2>Shape set</h2>
+  <div class="lab">
+    <div class="labbar">
+      <div class="ctl"><span class="eyebrow">Weight</span><div class="seg" data-ctl="weight"></div></div>
+      <div class="ctl"><span class="eyebrow">Line</span><div class="seg" data-ctl="line"></div></div>
+      <div class="ctl"><span class="eyebrow">Fill</span><div class="seg" data-ctl="fill"></div></div>
+      <div class="ctl"><span class="eyebrow">Look</span><div class="seg" data-ctl="look"></div></div>
+    </div>
+    <div class="tune">
+      <span class="eyebrow">Hand-drawn constants · locked: bow 2, swing 0.4, overshoot 3</span>
+      <label>bow <input type="range" id="t-bow" min="0" max="8" step="0.5" value="2"><output id="o-bow">2</output></label>
+      <label>width swing <input type="range" id="t-swing" min="0" max="0.9" step="0.05" value="0.4"><output id="o-swing">0.4</output></label>
+      <label>overshoot <input type="range" id="t-over" min="0" max="8" step="0.5" value="3"><output id="o-over">3</output></label>
+      <label>seed <input type="range" id="t-seed" min="1" max="20" step="1" value="7"><output id="o-seed">7</output></label>
+    </div>
+    <div class="sheet">
+      <h4>Basic</h4><div class="shapes" data-sheet="basic"></div>
+      <h4>Flowchart</h4><div class="shapes" data-sheet="flow"></div>
+      <h4>Arrows</h4><div class="shapes" data-sheet="arrow"></div>
+    </div>
+  </div>
+  <p class="note">Sizes under each shape are the proposed default insert size on a Manta page in pixels. Bow and overshoot are in these 200 px preview units; on the device they scale with the shape's long side.</p>
+
+  <h2>Wrap a selection</h2>
+  <div class="story">
+    <div class="panel"><span class="eyebrow">1 · Lasso the label</span>
+      <svg viewBox="0 0 220 150"><path d="M60 70 q8 -18 22 -4 t20 2 q12 -14 20 0 t24 -2" fill="none" stroke="#111" stroke-width="2.2" stroke-linecap="round"/><rect x="48" y="50" width="110" height="40" fill="none" stroke="#111" stroke-dasharray="4 3" stroke-width="1"/><circle cx="48" cy="50" r="3" fill="#111"/><circle cx="158" cy="90" r="3" fill="#111"/></svg>
+      <p>Handwritten words selected with the native lasso.</p></div>
+    <div class="panel"><span class="eyebrow">2 · Tap Wrap in the lasso toolbar</span>
+      <svg viewBox="0 0 220 150"><rect x="14" y="10" width="192" height="26" rx="4" fill="#f2f1ec" stroke="#111"/><text x="26" y="27" font-size="10" font-family="monospace" fill="#444">Copy  Cut  Del  ···</text><rect x="150" y="14" width="50" height="18" rx="3" fill="#111"/><text x="158" y="27" font-size="10" font-family="monospace" fill="#f2f1ec">Wrap</text><path d="M60 100 q8 -18 22 -4 t20 2 q12 -14 20 0 t24 -2" fill="none" stroke="#111" stroke-width="2.2" stroke-linecap="round"/><rect x="48" y="80" width="110" height="40" fill="none" stroke="#111" stroke-dasharray="4 3" stroke-width="1"/></svg>
+      <p>A lasso button registered for strokes and text. Opens the palette in wrap mode.</p></div>
+    <div class="panel"><span class="eyebrow">3 · Pick a shape</span>
+      <svg viewBox="0 0 220 150"><rect x="20" y="20" width="180" height="110" rx="3" fill="#e2e0da" stroke="#777"/><text x="30" y="36" font-size="9" font-family="monospace" fill="#333">Stencil · Wrap · 412 × 160</text><g stroke="#111" fill="#f2f1ec"><rect x="30" y="48" width="44" height="30"/><rect x="82" y="48" width="44" height="30" rx="9"/><rect x="134" y="48" width="44" height="30" rx="15"/></g><path d="M30 100 l44 0" stroke="#aaa"/><text x="30" y="118" font-size="9" font-family="monospace" fill="#555">Cancel</text></svg>
+      <p>Cells preview at the selection's proportions. Size is lasso rect plus padding.</p></div>
+    <div class="panel"><span class="eyebrow">4 · Shape drawn around it</span>
+      <svg viewBox="0 0 220 150" data-wrapresult></svg>
+      <p>Shape and label end up lassoed together, so they move as one.</p></div>
+  </div>
+
+  <h2>Device findings</h2>
+  <p>Six rounds of a spike plugin on a Manta, 4 and 5 November 2026, cross-checked by rendering the spike notes locally. Full table in the project README.</p>
+  <ul class="spikes">
+    <li><b>Strokes need only points and pressures.</b> Writing contours or recognition data breaks lasso hit-testing, so the renderer never writes it.</li>
+    <li><b>Pen 16 follows pressure, pen 10 does not.</b> Rendered width grows from pressure 400 to about 1600 and is flat above. Pen 16 can only thin a stroke below its thickness. Pen 15 is direction dependent, pen 11 is the marker.</li>
+    <li><b>Width unit.</b> Element thickness and geometry pen width share one unit: 0.5 mm is about 600, 1.0 mm about 1200. Values below 100 draw hairlines.</li>
+    <li><b>No gaps inside a stroke.</b> The pen-up flag is ignored and zero pressure is a hairline. Dashes and hatch are separate strokes.</li>
+    <li><b>Geometry stretches, strokes do not,</b> and both degrade: the native lasso scales line width with the shape, and bows and overshoots drawn for one size distort at another. Hence size at insert and redraw instead of scale.</li>
+    <li><b>Undo.</b> Geometry inserted with the geometry API keeps undo; page-element inserts of strokes do not.</li>
+    <li><b>Lasso after insert</b> works when the plugin view is closed first. Geometry has a flag that does it on insert.</li>
+    <li><b>Placement by pen</b> works through ordinary React Native touch handling on a transparent root; the page stays visible. A solid rubber band is needed because partial refresh drops dashes.</li>
+    <li><b>Recipes round-trip.</b> A JSON tag in the element's user data survives the lasso and drives redraw. Geometry inserted via the geometry API cannot carry one.</li>
+  </ul>
+</div>
+
+<script>
+(function(){
+  function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+
+  // ---------- shape definitions in a 200 x 120 box ----------
+  const W=200,H=120,M=14;
+  function arc(cx,cy,rx,ry,a0,a1,n){const pts=[];for(let i=0;i<=n;i++){const a=a0+(a1-a0)*i/n;pts.push([cx+rx*Math.cos(a),cy+ry*Math.sin(a)])}return pts}
+  function rect(x,y,w,h){return [[[x,y],[x+w,y],[x+w,y+h],[x,y+h],[x,y]]]}
+  function rrect(x,y,w,h,r){const p=[];p.push(...arc(x+w-r,y+r,r,r,-Math.PI/2,0,10));p.push(...arc(x+w-r,y+h-r,r,r,0,Math.PI/2,10));p.push(...arc(x+r,y+h-r,r,r,Math.PI/2,Math.PI,10));p.push(...arc(x+r,y+r,r,r,Math.PI,1.5*Math.PI,10));p.push(p[0]);return [p]}
+  function poly(pts){return [[...pts,pts[0]]]}
+  function head(x,y,ang,len){const a1=ang+Math.PI*0.82,a2=ang-Math.PI*0.82;return [[x+len*Math.cos(a1),y+len*Math.sin(a1)],[x,y],[x+len*Math.cos(a2),y+len*Math.sin(a2)]]}
+  const SHAPES={
+    basic:[
+      {id:'rect',name:'rectangle',size:'480 × 240',closed:true,lines:()=>rect(M,M+10,W-2*M,H-2*M-20)},
+      {id:'rrect',name:'rounded',size:'480 × 240',closed:true,lines:()=>rrect(M,M+10,W-2*M,H-2*M-20,16)},
+      {id:'square',name:'square',size:'300 × 300',closed:true,lines:()=>rect(W/2-46,H/2-46,92,92)},
+      {id:'circle',name:'circle',size:'300 × 300',closed:true,penLen:1e9,lines:()=>[arc(W/2,H/2,46,46,-Math.PI/2,1.5*Math.PI,72)]},
+      {id:'ellipse',name:'ellipse',size:'480 × 240',closed:true,penLen:1e9,lines:()=>[arc(W/2,H/2,86,44,-Math.PI/2,1.5*Math.PI,80)]},
+      {id:'tri',name:'triangle',size:'360 × 300',closed:true,lines:()=>poly([[W/2,M],[W-M-30,H-M],[M+30,H-M]])},
+      {id:'diamond',name:'diamond',size:'480 × 300',closed:true,lines:()=>poly([[W/2,M],[W-M,H/2],[W/2,H-M],[M,H/2]])},
+      {id:'hex',name:'hexagon',size:'480 × 300',closed:true,lines:()=>poly([[M+30,M+6],[W-M-30,M+6],[W-M,H/2],[W-M-30,H-M-6],[M+30,H-M-6],[M,H/2]])},
+    ],
+    flow:[
+      {id:'process',name:'process',size:'480 × 240',closed:true,lines:()=>rect(M,M+10,W-2*M,H-2*M-20)},
+      {id:'decision',name:'decision',size:'480 × 300',closed:true,lines:()=>poly([[W/2,M],[W-M,H/2],[W/2,H-M],[M,H/2]])},
+      {id:'term',name:'terminator',size:'480 × 200',closed:true,lines:()=>rrect(M,H/2-32,W-2*M,64,32)},
+      {id:'data',name:'data',size:'480 × 240',closed:true,lines:()=>poly([[M+36,M+10],[W-M,M+10],[W-M-36,H-M-10],[M,H-M-10]])},
+      {id:'doc',name:'document',size:'480 × 260',closed:true,lines:()=>{const p=[[M,M+6],[W-M,M+6],[W-M,H-M-14]];for(let i=1;i<=24;i++){const t=i/24;p.push([W-M-(W-2*M)*t,H-M-14+Math.sin(t*Math.PI*2)*10])}p.push([M,M+6]);return [p]}},
+      {id:'manual',name:'manual input',size:'480 × 240',closed:true,lines:()=>poly([[M,M+34],[W-M,M+6],[W-M,H-M-6],[M,H-M-6]])},
+      {id:'stored',name:'stored data',size:'480 × 240',closed:true,lines:()=>{const r=18,y0=M+8,y1=H-M-8,ry=(y1-y0)/2;const p=[];p.push(...arc(M+r,H/2,r,ry,Math.PI/2,1.5*Math.PI,20));p.push([W-M,y0]);p.push(...arc(W-M,H/2,r,ry,1.5*Math.PI,Math.PI/2,20));p.push([M+r,y1]);return [p]}},
+      {id:'offpage',name:'off-page',size:'300 × 360',closed:true,lines:()=>poly([[W/2-40,M],[W/2+40,M],[W/2+40,H-M-26],[W/2,H-M],[W/2-40,H-M-26]])},
+    ],
+    arrow:[
+      {id:'line',name:'line',size:'480',closed:false,lines:()=>[[[M,H/2],[W-M,H/2]]]},
+      {id:'arrow',name:'arrow',size:'480',closed:false,lines:()=>[[[M,H/2],[W-M,H/2]],head(W-M,H/2,0,18)]},
+      {id:'dbl',name:'double arrow',size:'480',closed:false,lines:()=>[[[M,H/2],[W-M,H/2]],head(W-M,H/2,0,18),head(M,H/2,Math.PI,18)]},
+      {id:'elbow',name:'elbow arrow',size:'480 × 240',closed:false,lines:()=>[[[M,M+10],[W/2,M+10],[W/2,H-M-10],[W-M,H-M-10]],head(W-M,H-M-10,0,18)]},
+      {id:'curve',name:'curved arrow',size:'480 × 240',closed:false,lines:()=>{const p=[];for(let i=0;i<=40;i++){const t=i/40;p.push([M+(W-2*M)*t,H-M-10-(H-2*M-20)*Math.sin(t*Math.PI/2)])}const a=Math.atan2(p[40][1]-p[39][1],p[40][0]-p[39][0]);return [p,head(W-M,M+10,a,18)]}},
+      {id:'down',name:'arrow down',size:'300',closed:false,lines:()=>[[[W/2,M],[W/2,H-M]],head(W/2,H-M,Math.PI/2,18)]},
+    ]
+  };
+
+  // ---------- geometry helpers ----------
+  const WEIGHT={thin:1.5,normal:2.6,thick:4.2};
+  function resample(pts,step){const out=[pts[0]];for(let i=1;i<pts.length;i++){const [x0,y0]=pts[i-1],[x1,y1]=pts[i];const d=Math.hypot(x1-x0,y1-y0);const n=Math.max(1,Math.round(d/step));for(let k=1;k<=n;k++)out.push([x0+(x1-x0)*k/n,y0+(y1-y0)*k/n])}return out}
+  function cum(pts){const s=[0];for(let i=1;i<pts.length;i++)s.push(s[i-1]+Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]));return s}
+  function turn(a,b,c){const u=[b[0]-a[0],b[1]-a[1]],v=[c[0]-b[0],c[1]-b[1]];const d=Math.atan2(u[0]*v[1]-u[1]*v[0],u[0]*v[0]+u[1]*v[1]);return Math.abs(d)}
+  // split a polyline into pen strokes at corners sharper than 35 degrees
+  function splitStrokes(pts,closed){
+    const LIM=35*Math.PI/180;const strokes=[];let cur=[pts[0]];
+    for(let i=1;i<pts.length;i++){cur.push(pts[i]);if(i<pts.length-1&&turn(pts[i-1],pts[i],pts[i+1])>LIM){strokes.push(cur);cur=[pts[i]]}}
+    strokes.push(cur);
+    if(closed&&strokes.length>1&&turn(pts[pts.length-2],pts[0],pts[1])<=LIM){const last=strokes.pop();strokes[0]=last.concat(strokes[0].slice(1))}
+    return strokes;
+  }
+  // a hand draws a long smooth outline in several pen strokes; split by arc length
+  function splitLong(stroke,maxLen){
+    const s=cum(stroke),L=s[s.length-1];const n=Math.ceil(L/maxLen);if(n<2)return [stroke];
+    const out=[];let piece=[stroke[0]],k=1;
+    for(let i=1;i<stroke.length;i++){piece.push(stroke[i]);if(s[i]>=L*k/n&&k<n){out.push(piece);piece=[stroke[i]];k++}}
+    if(piece.length>1)out.push(piece);return out;
+  }
+  function normalAt(pts,i){const a=pts[Math.max(0,i-1)],b=pts[Math.min(pts.length-1,i+1)];const dx=b[0]-a[0],dy=b[1]-a[1];const L=Math.hypot(dx,dy)||1;return [-dy/L,dx/L]}
+  function tangentEnd(pts,atStart){const n=pts.length;const a=atStart?pts[1]:pts[n-2],b=atStart?pts[0]:pts[n-1];const dx=b[0]-a[0],dy=b[1]-a[1];const L=Math.hypot(dx,dy)||1;return [dx/L,dy/L]}
+
+  // ---------- hand-drawn pass: one bow, one width profile, overshoot ----------
+  function handDraw(stroke,base,rnd,T,closed){
+    if(stroke.length<2)return [];
+    let pts=resample(stroke,4);
+    if(pts.length<2)return [];
+    const s=cum(pts),L=s[s.length-1]||1;
+    // overshoot: extend both ends along their tangents (only where strokes meet other strokes)
+    if(closed&&T.over>0){
+      const o0=T.over*(0.3+rnd()*0.7),o1=T.over*(0.3+rnd()*0.7);
+      const t0=tangentEnd(pts,true),t1=tangentEnd(pts,false);
+      pts=[[pts[0][0]+t0[0]*o0,pts[0][1]+t0[1]*o0],...pts,[pts[pts.length-1][0]+t1[0]*o1,pts[pts.length-1][1]+t1[1]*o1]];
+    }
+    const s2=cum(pts),L2=s2[s2.length-1]||1;
+    const amp=T.bow*(rnd()-0.5)*2*Math.min(1,L/60);
+    const profile=Math.floor(rnd()*4);const sw=T.swing;
+    const out=[];
+    for(let i=0;i<pts.length;i++){
+      const t=s2[i]/L2;const n=normalAt(pts,i);
+      const b=amp*Math.sin(Math.PI*t);
+      let w;
+      if(profile===0)w=base*(1-sw/2+sw*Math.sin(Math.PI*t));
+      else if(profile===1)w=base*(1+sw/2-sw*Math.sin(Math.PI*t));
+      else if(profile===2)w=base*(1-sw/2+sw*t);
+      else w=base*(1+sw/2-sw*t);
+      w=Math.max(base*0.35,w);
+      out.push({x:pts[i][0]+n[0]*b,y:pts[i][1]+n[1]*b,w});
+    }
+    return out;
+  }
+  function cleanDraw(stroke,base){const pts=resample(stroke,4);return pts.map(p=>({x:p[0],y:p[1],w:base}))}
+
+  // ---------- dash splitting on sampled points ----------
+  function pieces(samples,on,off){
+    if(!on)return [samples];
+    const out=[];let cur=[],acc=0,drawing=true;
+    for(let i=0;i<samples.length;i++){
+      if(i>0)acc+=Math.hypot(samples[i].x-samples[i-1].x,samples[i].y-samples[i-1].y);
+      if(drawing){cur.push(samples[i]);if(acc>=on){if(cur.length>1)out.push(cur);cur=[];acc=0;drawing=false}}
+      else if(acc>=off){acc=0;drawing=true;cur=[samples[i]]}
+    }
+    if(cur.length>1)out.push(cur);
+    return out;
+  }
+  function dots(samples,gap){const out=[];let acc=gap;for(let i=0;i<samples.length;i++){if(i>0)acc+=Math.hypot(samples[i].x-samples[i-1].x,samples[i].y-samples[i-1].y);if(acc>=gap){out.push(samples[i]);acc=0}}return out}
+
+  // ---------- emit SVG ----------
+  function ribbon(samples){ // variable-width stroke as a filled outline
+    const n=samples.length;if(n<2)return '';
+    const L=[],R=[];
+    for(let i=0;i<n;i++){const a=samples[Math.max(0,i-1)],b=samples[Math.min(n-1,i+1)];const dx=b.x-a.x,dy=b.y-a.y;const l=Math.hypot(dx,dy)||1;const nx=-dy/l,ny=dx/l;const h=samples[i].w/2;L.push([samples[i].x+nx*h,samples[i].y+ny*h]);R.push([samples[i].x-nx*h,samples[i].y-ny*h])}
+    const d='M'+L.map(p=>p[0].toFixed(1)+' '+p[1].toFixed(1)).join('L')+'L'+R.reverse().map(p=>p[0].toFixed(1)+' '+p[1].toFixed(1)).join('L')+'Z';
+    const c0=samples[0],c1=samples[n-1];
+    return `<path d="${d}" fill="#111" stroke="#111" stroke-width="0.4" stroke-linejoin="round"/><circle cx="${c0.x.toFixed(1)}" cy="${c0.y.toFixed(1)}" r="${(c0.w/2).toFixed(2)}" fill="#111"/><circle cx="${c1.x.toFixed(1)}" cy="${c1.y.toFixed(1)}" r="${(c1.w/2).toFixed(2)}" fill="#111"/>`;
+  }
+  function polyPath(samples,w){return `<path d="${'M'+samples.map(p=>p.x.toFixed(1)+' '+p.y.toFixed(1)).join('L')}" fill="none" stroke="#111" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"/>`}
+  function outlineD(line){return 'M'+line.map(p=>p[0].toFixed(1)+' '+p[1].toFixed(1)).join('L')+'Z'}
+
+  let uid=0;
+  function render(shape,style,T,seed,opts){
+    opts=opts||{};
+    const base=WEIGHT[style.weight];const rnd=mulberry32(seed*7919+13);
+    const lines=shape.lines();
+    const vb=opts.viewBox||`0 0 ${W} ${H}`;
+    let s=`<svg viewBox="${vb}" xmlns="http://www.w3.org/2000/svg"${opts.attrs||''}>`;
+    const sketch=style.look==='sketchy';
+    if(shape.closed&&style.fill!=='none'){
+      const id='clip'+(uid++);
+      s+=`<defs><clipPath id="${id}"><path d="${outlineD(lines[0])}"/></clipPath></defs>`;
+      if(style.fill==='hatch'){
+        s+=`<g clip-path="url(#${id})">`;
+        const hw=1.1;
+        for(let x=-H;x<W+H;x+=10){
+          const ln=[[x,0],[x+H,H]];
+          const smp=sketch?handDraw(ln,hw,rnd,{bow:T.bow*0.5,swing:T.swing*0.5,over:0},false):cleanDraw(ln,hw);
+          s+=sketch?ribbon(smp):polyPath(smp,hw);
+        }
+        s+='</g>';
+      }else{
+        const col=style.fill==='light'?'#c9c9c9':'#9d9d9d';
+        s+=`<path d="${outlineD(lines[0])}" fill="${col}"/>`;
+      }
+    }
+    const on=style.line==='dashed'?base*4.2:0,off=base*2.8;
+    for(const ln of lines){
+      const strokes=sketch?splitStrokes(ln,shape.closed).flatMap(st=>splitLong(st,shape.penLen||130)):[ln];
+      for(const st of strokes){
+        const smp=sketch?handDraw(st,base,rnd,T,shape.closed||ln.length===3):cleanDraw(st,base);
+        if(style.line==='dotted'){
+          for(const p of dots(smp,base*2.6))s+=`<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${(p.w*0.55).toFixed(2)}" fill="#111"/>`;
+        }else{
+          for(const pc of pieces(smp,on,off))s+=sketch?ribbon(pc):polyPath(pc,base);
+        }
+      }
+    }
+    return s+'</svg>';
+  }
+
+  // ---------- glyphs for the style bar ----------
+  const G={
+    weight:{thin:'<svg viewBox="0 0 22 14"><path class="ink" d="M3 7h16" stroke="#111" stroke-width="1" stroke-linecap="round"/></svg>',
+            normal:'<svg viewBox="0 0 22 14"><path class="ink" d="M3 7h16" stroke="#111" stroke-width="2.2" stroke-linecap="round"/></svg>',
+            thick:'<svg viewBox="0 0 22 14"><path class="ink" d="M3 7h16" stroke="#111" stroke-width="3.8" stroke-linecap="round"/></svg>'},
+    line:{solid:'<svg viewBox="0 0 22 14"><path class="ink" d="M3 7h16" stroke="#111" stroke-width="1.8" stroke-linecap="round"/></svg>',
+          dashed:'<svg viewBox="0 0 22 14"><path class="ink" d="M3 7h16" stroke="#111" stroke-width="1.8" stroke-linecap="round" stroke-dasharray="4 3"/></svg>',
+          dotted:'<svg viewBox="0 0 22 14"><path class="ink" d="M3 7h16" stroke="#111" stroke-width="1.8" stroke-linecap="round" stroke-dasharray="0.1 3.2"/></svg>'},
+    fill:{none:'<svg viewBox="0 0 22 14"><rect class="ink" x="5" y="1.5" width="12" height="11" fill="none" stroke="#111" stroke-width="1.2"/></svg>',
+          hatch:'<svg viewBox="0 0 22 14"><defs><clipPath id="gh"><rect x="5" y="1.5" width="12" height="11"/></clipPath></defs><g clip-path="url(#gh)" class="ink" stroke="#111" stroke-width="1"><path d="M2 12 L12 2M6 15 L16 5M10 15 L20 5M-2 12 L8 2"/></g><rect class="ink" x="5" y="1.5" width="12" height="11" fill="none" stroke="#111" stroke-width="1.2"/></svg>',
+          light:'<svg viewBox="0 0 22 14"><rect x="5" y="1.5" width="12" height="11" fill="#c9c9c9"/><rect class="ink" x="5" y="1.5" width="12" height="11" fill="none" stroke="#111" stroke-width="1.2"/></svg>',
+          dark:'<svg viewBox="0 0 22 14"><rect x="5" y="1.5" width="12" height="11" fill="#8a8a8a"/><rect class="ink" x="5" y="1.5" width="12" height="11" fill="none" stroke="#111" stroke-width="1.2"/></svg>'},
+    look:{clean:'<svg viewBox="0 0 22 14"><path class="ink" d="M3 9 L19 5" stroke="#111" stroke-width="1.8" stroke-linecap="round"/></svg>',
+          sketchy:'<svg viewBox="0 0 22 14"><path class="ink" d="M3 9 C7 3, 10 11, 14 6 S18 4, 19 6" fill="none" stroke="#111" stroke-width="1.8" stroke-linecap="round"/></svg>'}
+  };
+  const ORDER={weight:['thin','normal','thick'],line:['solid','dashed','dotted'],fill:['none','hatch','light','dark'],look:['clean','sketchy']};
+
+  // ---------- state ----------
+  const style={weight:'normal',line:'solid',fill:'none',look:'clean'};
+  const T={bow:2,swing:0.4,over:3,seed:7};
+  const heroStyle=()=>({...style,look:'sketchy'});
+
+  function drawAll(){
+    // lab controls
+    document.querySelectorAll('[data-ctl]').forEach(seg=>{const k=seg.dataset.ctl;seg.innerHTML=ORDER[k].map(v=>`<button data-v="${v}" class="${style[k]===v?'on':''}" aria-label="${v}">${G[k][v]}</button>`).join('')});
+    // device style bars
+    document.querySelectorAll('[data-stylebar]').forEach(bar=>{bar.innerHTML=Object.keys(ORDER).map(k=>`<div class="chipgrp" data-k="${k}">${ORDER[k].map(v=>`<span class="chip ${style[k]===v?'on':''}" data-v="${v}">${G[k][v]}</span>`).join('')}</div>`).join('')});
+    // device grids
+    document.querySelectorAll('[data-grid]').forEach(g=>{
+      const list=SHAPES[g.dataset.family].slice(0,8);
+      g.innerHTML=list.map((sh,i)=>`<div class="cell ${i===0?'sel':''}">${render(sh,style,T,T.seed*31+i)}</div>`).join('');
+    });
+    const placed=document.querySelector('[data-placed]');
+    if(placed)placed.innerHTML=render(SHAPES.basic[0],style,T,T.seed+5,{attrs:' preserveAspectRatio="none"'});
+    document.querySelectorAll('[data-strippreview]').forEach(el=>{el.innerHTML=render(SHAPES.basic[0],style,T,T.seed+21)});
+    document.querySelectorAll('[data-redrawpreview]').forEach(el=>{el.innerHTML=render(SHAPES.flow[0],{...style,look:'sketchy'},T,T.seed+22)});
+    const redrawn=document.querySelector('[data-redrawn]');
+    if(redrawn)redrawn.innerHTML=render(SHAPES.flow[0],{...style,look:'sketchy'},T,T.seed+9,{attrs:' preserveAspectRatio="none"'});
+    // sheet
+    for(const fam of Object.keys(SHAPES)){
+      document.querySelector(`[data-sheet="${fam}"]`).innerHTML=SHAPES[fam].map((sh,i)=>`<div class="shape">${render(sh,style,T,T.seed*101+i)}<span>${sh.name}</span><small>${sh.size}</small></div>`).join('');
+    }
+    // hero: rounded rectangle, clean vs hand-drawn at three weights
+    const rr=SHAPES.basic[1];
+    const hero=document.querySelector('[data-hero]');
+    hero.innerHTML=[
+      ['clean · normal',{...style,look:'clean',weight:'normal',fill:'none',line:'solid'},1],
+      ['hand-drawn · thin',{...heroStyle(),weight:'thin',fill:'none',line:'solid'},2],
+      ['hand-drawn · normal',{...heroStyle(),weight:'normal',fill:'none',line:'solid'},3],
+      ['hand-drawn · thick · hatch',{...heroStyle(),weight:'thick',fill:'hatch',line:'solid'},4],
+    ].map(([cap,st,i])=>`<figure>${render(rr,st,T,T.seed*17+i)}<figcaption>${cap}</figcaption></figure>`).join('');
+    // wrap result
+    const wr=document.querySelector('[data-wrapresult]');
+    const box={id:'wrapbox',closed:true,lines:()=>rrect(36,42,134,56,10)};
+    wr.outerHTML=render(box,{...style,fill:'none'},T,T.seed+99,{viewBox:'0 0 220 150',attrs:' data-wrapresult'}).replace('</svg>','<path d="M60 70 q8 -18 22 -4 t20 2 q12 -14 20 0 t24 -2" fill="none" stroke="#111" stroke-width="2.2" stroke-linecap="round"/><rect x="30" y="36" width="146" height="68" fill="none" stroke="#111" stroke-dasharray="4 3" stroke-width="1"/></svg>');
+  }
+  function setStyle(k,v){style[k]=v;drawAll()}
+  document.addEventListener('click',e=>{
+    const b=e.target.closest('[data-ctl] button');if(b){setStyle(b.closest('[data-ctl]').dataset.ctl,b.dataset.v);return}
+    const c=e.target.closest('.chip');if(c){setStyle(c.closest('.chipgrp').dataset.k,c.dataset.v);return}
+    const t=e.target.closest('.tab');if(t&&!t.classList.contains('off')){const tabs=t.parentElement;tabs.querySelectorAll('.tab').forEach(x=>x.classList.toggle('on',x===t));tabs.parentElement.querySelector('[data-grid]').dataset.family=t.dataset.tab;drawAll()}
+  });
+  for(const k of ['bow','swing','over','seed']){
+    const inp=document.getElementById('t-'+k),out=document.getElementById('o-'+k);
+    inp.addEventListener('input',()=>{T[k]=parseFloat(inp.value);out.value=inp.value;drawAll()});
+  }
+  drawAll();
+})();
+</script>
