@@ -78,6 +78,7 @@ Four open-source plugins cover neighbouring ground; their READMEs record device 
 
 - `index.js` registers the sidebar button and bumps `session` on press.
 - `App.tsx` is the spike screen.
-- `src/strokes.ts` builds stroke elements and inserts them into the open page (save, insert, reload).
+- `src/device/` is the only module that talks to `sn-plugin-lib`: page context, inserting a plan as page elements tagged with a recipe, reading and replacing a lasso selection, selecting a rect, settings.
+- `src/strokes.ts` and `src/sdk.ts` are shims that keep the spike compiling against `src/device/`.
 - `src/handdrawn.ts` is the hand-drawn renderer from the design prototype, with the locked constants.
 - `src/spikes.ts` holds the individual checks.

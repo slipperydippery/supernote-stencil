@@ -18,6 +18,7 @@ import { ensurePermission } from './src/sdk';
 import { session } from './src/session';
 import {
   dashGap,
+  geometryPageElements,
   geometryShapes,
   handDrawnBoxAt,
   handDrawnGeometry,
@@ -45,6 +46,7 @@ const SPIKES: Spike[] = [
   { label: '4. Dash gaps in one stroke', run: dashGap },
   { label: '6. Thickness ladder (internal units)', run: thicknessLadder },
   { label: '7. Geometry box + ellipse (stretch check)', run: geometryShapes },
+  { label: '7g. Geometry via page elements', run: geometryPageElements },
   { label: '8. Hand-drawn box as one geometry', run: handDrawnGeometry },
 ];
 
