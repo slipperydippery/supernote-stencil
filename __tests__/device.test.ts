@@ -187,6 +187,18 @@ describe('insertPlan', () => {
       expect(mockState.created[0]).not.toHaveProperty(k);
     }
   });
+
+  it('gives integer widths a fractional part', async () => {
+    const intPlan: Plan = {
+      ...plan,
+      strokes: [{ ...plan.strokes[0], thickness: 600 }],
+      geometries: [{ ...plan.geometries[0], penWidth: 1000 }],
+    };
+    await insertPlan(ctx, intPlan, recipe);
+    expect(mockState.created[0].thickness).toBe(600.001);
+    expect(mockState.created[1].thickness).toBe(1000.001);
+    expect(mockState.created[1].geometry.penWidth).toBe(1000.001);
+  });
 });
 
 describe('readLasso', () => {
@@ -250,8 +262,11 @@ describe('settings', () => {
     expect(await loadSettings()).toEqual(DEFAULT_SETTINGS);
   });
 
-  it('yields defaults when nothing is stored', async () => {
-    expect(await loadSettings()).toEqual(DEFAULT_SETTINGS);
+  it('yields defaults when nothing is stored, without sharing the default style object', async () => {
+    const s = await loadSettings();
+    expect(s).toEqual(DEFAULT_SETTINGS);
+    s.style.weight = 'thick';
+    expect(DEFAULT_SETTINGS.style.weight).toBe('normal');
   });
 
   it('falls back to the default style on corrupt JSON and keeps the other keys', async () => {

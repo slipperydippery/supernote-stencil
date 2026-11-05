@@ -30,7 +30,7 @@ function decode(out: Settings, key: Key, raw: string): void {
       try {
         style = JSON.parse(raw);
       } catch {}
-      out.style = isStyle(style) ? style : DEFAULT_STYLE;
+      out.style = isStyle(style) ? style : { ...DEFAULT_STYLE };
       return;
     }
     case 'lastShape':
@@ -51,7 +51,7 @@ async function settingsDir(): Promise<string | null> {
 }
 
 export async function loadSettings(): Promise<Settings> {
-  const settings: Settings = { ...DEFAULT_SETTINGS };
+  const settings: Settings = { ...DEFAULT_SETTINGS, style: { ...DEFAULT_STYLE } };
   try {
     const dir = await settingsDir();
     if (!dir || !(await FileUtils.exists(dir))) {

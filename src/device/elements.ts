@@ -4,6 +4,11 @@ import type { PageCtx } from './page';
 import { parseRecipeLocal } from './recipe';
 import { call, recycle } from './sdk';
 
+/** Integer widths render as hairlines (finding "thickness unit"), so always carry a fraction. */
+function fractional(w: number): number {
+  return Number.isInteger(w) ? w + 0.001 : w;
+}
+
 /**
  * Inserts through the page-element API, which redraws by itself. Never save
  * and reload around it: a reload was seen to drop freshly written strokes.
@@ -18,7 +23,7 @@ export async function insertTagged(ctx: PageCtx, plan: Plan, tag: string): Promi
       created.push(el);
       el.pageNum = ctx.page;
       el.layerNum = 0;
-      el.thickness = s.thickness;
+      el.thickness = fractional(s.thickness);
       el.userData = tag;
       el.stroke!.penType = s.penType;
       el.stroke!.penColor = s.penColor;
@@ -34,14 +39,14 @@ export async function insertTagged(ctx: PageCtx, plan: Plan, tag: string): Promi
       created.push(el);
       el.pageNum = ctx.page;
       el.layerNum = 0;
-      el.thickness = g.penWidth;
+      el.thickness = fractional(g.penWidth);
       el.userData = tag;
       el.geometry = {
         ...el.geometry,
         showLassoAfterInsert: false,
         penColor: g.penColor,
         penType: g.penType,
-        penWidth: g.penWidth,
+        penWidth: fractional(g.penWidth),
         type: g.type,
         points: g.points,
         ellipseCenterPoint: g.ellipseCenterPoint,
