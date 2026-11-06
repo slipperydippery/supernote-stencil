@@ -53,6 +53,7 @@ Device run of 2026-11-05 on a Manta, firmware current at that date. Observed on 
 | stretch, round 5 | degrades | Native lasso scaling multiplies stroke width with the shape (stroke box lines roughly doubled at 2×). A hand-drawn polygon geometry stretched non-proportionally pulls its bows and corner tails out of proportion. Same finding as sn-shapes ADR-PEN-PLACEMENT. Shapes must be sized at insert time. |
 | lasso rect, PR 3 device run | integers only | `lassoElements` validates its rect against the SDK's `RectSchema` (`integer: true`) and returns `success: false` for fractional coordinates. Placement boxes are fractional, so `selectRect` rounds outwards. |
 | listFiles, PR 3 device run | objects, not strings | `FileUtils.listFiles` returns `[{ type, path }]` on a Manta although the SDK types it as `string[]`. `makeDir`, `exists` and `deleteDir` in the plugin dir all return `true`. |
+| select only the insert, PR 3 spike | not possible | `showLassoAfterInsert: true` on a geometry inserted through `insertPageElements` selects nothing, before or after `closePluginView` (`getLassoElements` → 904, "No lasso action has been performed"). `lassoElements` only takes a rect, so a placed shape is selected together with anything inside its box. |
 
 Design consequence (decided 2026-11-05): tap or drag to place with a transparent full-screen layer, wrap a selection, and a lasso-toolbar "redraw" that regenerates a Stencil shape at the lasso box from a recipe stored in `Element.userData`. Centred insert is dropped.
 
