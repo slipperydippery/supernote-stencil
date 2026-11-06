@@ -255,13 +255,13 @@ describe('selectRect', () => {
   it('keeps a selection that holds only the inserted elements', async () => {
     mockState.lassoElements = [{ uuid: 'a' }, { uuid: 'b' }];
     await selectRect({ left: 100, top: 200, right: 300, bottom: 400 }, 2);
-    expect(mockState.log).toEqual(['closePluginView', 'lassoElements', 'getLassoElements', 'recycle:a', 'recycle:b']);
+    expect(mockState.log).toEqual(['closePluginView', 'lassoElements', 'clearElementCache', 'getLassoElements', 'recycle:a', 'recycle:b']);
   });
 
   it('drops a selection that also caught existing ink', async () => {
     mockState.lassoElements = [{ uuid: 'a' }, { uuid: 'b' }, { uuid: 'text' }];
     await selectRect({ left: 100, top: 200, right: 300, bottom: 400 }, 2);
-    expect(mockState.log).toEqual(['closePluginView', 'lassoElements', 'getLassoElements', 'recycle:a', 'recycle:b', 'recycle:text', 'setLassoBoxState:2']);
+    expect(mockState.log).toEqual(['closePluginView', 'lassoElements', 'clearElementCache', 'getLassoElements', 'recycle:a', 'recycle:b', 'recycle:text', 'setLassoBoxState:2']);
   });
 
   it('rounds a fractional rect outwards to whole pixels', async () => {

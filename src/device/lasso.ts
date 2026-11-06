@@ -31,6 +31,8 @@ export async function selectRect(rect: Box, only?: number): Promise<void> {
   if (only === undefined) {
     return;
   }
+  // lassoElements does not refresh the element cache, which would still hold the previous selection.
+  PluginCommAPI.clearElementCache();
   const selected = (await call<unknown[] | null>('getLassoElements', PluginCommAPI.getLassoElements())) ?? [];
   selected.forEach(e => recycle(e as { uuid?: string }));
   if (selected.length > only) {
