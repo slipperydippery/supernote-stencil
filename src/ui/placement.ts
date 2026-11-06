@@ -76,8 +76,7 @@ export function fitBox(def: ShapeDef, dragged: Box): Box {
     if (SYMMETRIC.has(def.id)) {
       return normalise(dragged);
     }
-    // The curve runs from its frame's (0, 1) to (1, 0), so its vertical axis is swapped to start at pen-down.
-    return def.id === 'curvedArrow' ? { ...dragged, top: dragged.bottom, bottom: dragged.top } : { ...dragged };
+    return { ...dragged };
   }
   const n = normalise(dragged);
   let { left, top, right, bottom } = n;
