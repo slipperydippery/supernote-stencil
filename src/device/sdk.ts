@@ -40,6 +40,3 @@ export function recycle(el: { uuid?: string } | null | undefined): void {
   }
 }
 
-export function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}

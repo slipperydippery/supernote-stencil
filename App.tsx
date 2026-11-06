@@ -30,7 +30,8 @@ import {
   thicknessLadder,
   type SpikeResult,
 } from './src/spikes';
-import { currentPage, lasso, type PageCtx } from './src/strokes';
+import { currentPage, type PageCtx } from './src/strokes';
+import { selectRect } from './src/device';
 
 const REDRAW_BUTTON_ID = 400;
 const DRAG_THRESHOLD_DP = 8;
@@ -140,9 +141,7 @@ export default function App() {
       return;
     }
     try {
-      await PluginManager.closePluginView();
-      await new Promise(r => setTimeout(r, 300));
-      await lasso(last);
+      await selectRect(last);
     } catch (e: any) {
       append(`Lasso failed: ${e?.message ?? e}`);
     }
@@ -153,10 +152,7 @@ export default function App() {
       return;
     }
     try {
-      await PluginManager.closePluginView();
-      await new Promise(r => setTimeout(r, 300));
-      await lasso(last);
-      await new Promise(r => setTimeout(r, 300));
+      await selectRect(last);
       const w = last.right - last.left;
       const res = (await PluginCommAPI.resizeLassoRect({
         left: last.left - 6,
