@@ -1,7 +1,54 @@
-import { SHAPES, type Box } from '../src/shapes';
+import { SHAPES, type Box, type Pt, type ShapeDef } from '../src/shapes';
 import { union, wrapBox, WRAP_PADDING } from '../src/ui/wrap';
 
 const selection: Box = { left: 100, top: 100, right: 300, bottom: 200 };
+
+/**
+ * Half-plane test per edge of a convex polygon (consistent winding, as every
+ * `outline()` produces). Flat edges of hexagon/triangle sit exactly flush with
+ * a padded-box edge by design (same as a tangent diamond/circle corner), so
+ * boundary points must count as contained — a parity ray-casting test is
+ * ambiguous exactly there, this is not.
+ */
+function insideConvexPolygon(p: Pt, poly: Pt[], eps = 1e-6): boolean {
+  let sign = 0;
+  for (let i = 0; i < poly.length - 1; i++) {
+    const a = poly[i];
+    const b = poly[i + 1];
+    const cross = (b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x);
+    if (Math.abs(cross) < eps) {
+      continue;
+    }
+    const s = Math.sign(cross);
+    if (sign === 0) {
+      sign = s;
+    } else if (s !== sign) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function corners(b: Box): Pt[] {
+  return [
+    { x: b.left, y: b.top },
+    { x: b.right, y: b.top },
+    { x: b.right, y: b.bottom },
+    { x: b.left, y: b.bottom },
+  ];
+}
+
+/**
+ * Checks the real outline (not just the growth ratios) against the padded
+ * selection's corners — wrapBox's own contract is to contain the padded box,
+ * not just the raw selection.
+ */
+function wrapContainsPadded(def: ShapeDef, sel: Box, padding: number): boolean {
+  const box = wrapBox(def, sel, padding);
+  const outline = def.outline(box)[0];
+  const padded = { left: sel.left - padding, top: sel.top - padding, right: sel.right + padding, bottom: sel.bottom + padding };
+  return corners(padded).every(p => insideConvexPolygon(p, outline));
+}
 
 describe('wrapBox', () => {
   it('pads a rectangle on every side', () => {
@@ -43,19 +90,31 @@ describe('wrapBox', () => {
     expect(box.bottom).toBeGreaterThanOrEqual(padded.bottom);
   });
 
-  it('grows a triangle more on the vertical axis than the horizontal', () => {
+  it('grows a triangle horizontally and extends only its top, leaving the base flush with the selection', () => {
     const padded = wrapBox(SHAPES.rectangle, selection, 24);
     const box = wrapBox(SHAPES.triangle, selection, 24);
-    expect(box.right - box.left).toBeCloseTo((padded.right - padded.left) * 1.7);
-    expect(box.bottom - box.top).toBeCloseTo((padded.bottom - padded.top) * 2.2);
+    expect(box.right - box.left).toBeCloseTo((padded.right - padded.left) * 2.2);
+    expect(box.bottom).toBe(padded.bottom);
+    expect(box.top).toBeCloseTo(padded.top - (padded.bottom - padded.top));
+  });
+
+  it('contains the padded selection inside the real triangle outline', () => {
+    expect(wrapContainsPadded(SHAPES.triangle, selection, 24)).toBe(true);
+    // A short, wide selection is the tightest case: the apex has the least room to taper.
+    expect(wrapContainsPadded(SHAPES.triangle, { left: 0, top: 0, right: 600, bottom: 80 }, 24)).toBe(true);
   });
 
   it('grows a hexagon only horizontally', () => {
     const padded = wrapBox(SHAPES.rectangle, selection, 24);
     const box = wrapBox(SHAPES.hexagon, selection, 24);
-    expect(box.right - box.left).toBeCloseTo((padded.right - padded.left) * 1.5);
+    expect(box.right - box.left).toBeCloseTo((padded.right - padded.left) * 1.54);
     expect(box.top).toBe(padded.top);
     expect(box.bottom).toBe(padded.bottom);
+  });
+
+  it('contains the padded selection inside the real hexagon outline', () => {
+    expect(wrapContainsPadded(SHAPES.hexagon, selection, 24)).toBe(true);
+    expect(wrapContainsPadded(SHAPES.hexagon, { left: 0, top: 0, right: 600, bottom: 80 }, 24)).toBe(true);
   });
 
   it('WRAP_PADDING is the sketch default', () => {
