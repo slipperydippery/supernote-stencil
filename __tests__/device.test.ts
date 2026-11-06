@@ -52,8 +52,12 @@ jest.mock('sn-plugin-lib', () => {
         record('deleteLassoElements');
         return mockOk(true);
       }),
-      lassoElements: jest.fn(() => {
+      // Like the SDK's RectSchema: integer coordinates only.
+      lassoElements: jest.fn((r: Record<string, number>) => {
         record('lassoElements');
+        if (Object.values(r).some(v => !Number.isInteger(v))) {
+          return Promise.resolve({ success: false, result: null, error: { code: 101, message: 'lassoElements.left must be an integer' } });
+        }
         return mockOk(true);
       }),
       reloadFile: jest.fn(() => record('reloadFile')),
@@ -239,6 +243,11 @@ describe('selectRect', () => {
     await selectRect({ left: 100, top: 200, right: 300, bottom: 400 });
     expect(mockState.log).toEqual(['closePluginView', 'lassoElements']);
     expect(PluginCommAPI.lassoElements).toHaveBeenCalledWith({ left: 94, top: 194, right: 306, bottom: 406 });
+  });
+
+  it('rounds a fractional rect outwards to whole pixels', async () => {
+    await selectRect({ left: 100.4, top: 200.6, right: 300.2, bottom: 399.5 });
+    expect(PluginCommAPI.lassoElements).toHaveBeenCalledWith({ left: 94, top: 194, right: 307, bottom: 406 });
   });
 });
 
