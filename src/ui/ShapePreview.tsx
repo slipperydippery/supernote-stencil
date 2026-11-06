@@ -5,8 +5,8 @@ import { INK } from './theme';
 
 const LINE = 2;
 /** dp per staircase step on a diagonal segment: coarser is fewer views, finer reads closer to a straight line. */
-const STEP_LEN = 10;
-const MAX_STEPS = 12;
+const STEP_LEN = 5;
+const MAX_STEPS = 24;
 
 export type Rect = { left: number; top: number; width: number; height: number };
 

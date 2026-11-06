@@ -36,6 +36,6 @@ describe('segmentRects', () => {
   it('caps the staircase step count for a very long diagonal segment', () => {
     const rects = segmentRects({ x: 0, y: 0 }, { x: 2000, y: 2000 });
     // Two rects (one horizontal, one vertical) per step, capped at MAX_STEPS.
-    expect(rects.length).toBeLessThanOrEqual(24);
+    expect(rects.length).toBeLessThanOrEqual(48);
   });
 });
