@@ -21,6 +21,15 @@ PluginManager.registerButton(1, ['NOTE'], {
   showType: 1,
 });
 
+// editDataTypes: 0 strokes, 3 text boxes, 5 geometry (1 titles, 4 links deliberately excluded).
+PluginManager.registerButton(2, ['NOTE'], {
+  id: LASSO_BUTTON_ID,
+  name: 'Stencil',
+  icon: Image.resolveAssetSource(require('./assets/icon.png')).uri,
+  enable: true,
+  editDataTypes: [0, 3, 5],
+});
+
 PluginManager.registerButtonListener({
   onButtonPress(event) {
     if (event.id === SIDEBAR_BUTTON_ID || event.id === LASSO_BUTTON_ID) {

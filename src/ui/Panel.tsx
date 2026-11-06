@@ -17,9 +17,11 @@ export type PanelProps = {
   onPick(def: ShapeDef): void;
   onClose(): void;
   title?: string;
+  families?: Family[];
 };
 
-export default function Panel({ tab, onTab, style, onStyle, selected, onPick, onClose, title }: PanelProps) {
+export default function Panel({ tab, onTab, style, onStyle, selected, onPick, onClose, title, families }: PanelProps) {
+  const visibleFamilies = families ?? FAMILIES;
   return (
     <View style={styles.panel}>
       <View style={styles.header}>
@@ -29,7 +31,7 @@ export default function Panel({ tab, onTab, style, onStyle, selected, onPick, on
         </Pressable>
       </View>
       <View style={styles.tabs}>
-        {FAMILIES.map(f => (
+        {visibleFamilies.map(f => (
           <Pressable
             key={f}
             testID={`tab-${f}`}

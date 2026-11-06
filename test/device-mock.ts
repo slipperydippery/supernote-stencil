@@ -1,4 +1,5 @@
 import type { PageCtx, Settings } from '../src/device';
+import type { Recipe } from '../src/render/recipe';
 import { DEFAULT_STYLE } from '../src/render/style';
 
 /** Shared state behind the jest.mock('../src/device') factory in the UI suites. */
@@ -29,6 +30,8 @@ export function deviceMock() {
       device.log.push('closeView');
       return Promise.resolve();
     }),
-    readLasso: jest.fn(() => Promise.resolve({ rect: { left: 0, top: 0, right: 0, bottom: 0 }, recipe: null, count: 3 })),
+    readLasso: jest.fn(() =>
+      Promise.resolve({ rect: { left: 0, top: 0, right: 0, bottom: 0 }, recipe: null as Recipe | null, count: 3 }),
+    ),
   };
 }
