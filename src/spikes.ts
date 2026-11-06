@@ -6,6 +6,8 @@ import { PluginCommAPI, type Point, type Rect } from 'sn-plugin-lib';
 import { call } from './sdk';
 import { handDrawnOutline, LOCKED, peakThickness, pressureFromWidth, toPoints, type Pt } from './handdrawn';
 import { constant, insertStrokes, PEN, ramp, sampleLine, type PageCtx, type StrokeSpec } from './strokes';
+import type { GeoSpec, Recipe } from './device/contracts';
+import { insertPlan, readLasso } from './device';
 
 export type SpikeResult = { rect: Rect; log: string };
 
@@ -104,7 +106,7 @@ export async function handDrawnRect(ctx: PageCtx): Promise<SpikeResult> {
         pressures: stroke.map(s => pressureFromWidth(s.w, peak)),
         penType,
         thickness: penType === PEN.pressure ? peak : base,
-        userData: JSON.stringify({ shape: 'rect', look: 'hand', seed: 7 + i } as Recipe),
+        userData: JSON.stringify(handRecipe(7 + i)),
       });
     }
   });
@@ -157,7 +159,7 @@ export async function dashGap(ctx: PageCtx): Promise<SpikeResult> {
     rect,
     log:
       'Dash test inserted bottom-left, three rows:\n' +
-      'row 1: one stroke, flagDraw false in the middle third\n' +
+      'row 1: one stroke, flagDraw false in the middle third (ignored since GH-3, renders solid)\n' +
       'row 2: one stroke on pen 16, pressure 0 in the middle third\n' +
       'row 3: separate dash strokes (reference)\n' +
       'Look for: does row 1 or 2 show a gap? Then lasso row 3 and see whether all dashes select together.',
@@ -307,13 +309,67 @@ export async function handDrawnGeometry(ctx: PageCtx): Promise<SpikeResult> {
   };
 }
 
-export type Recipe = { shape: 'rect'; look: 'hand'; seed: number };
+function handRecipe(seed: number): Recipe {
+  return { v: 1, shape: 'rectangle', style: { weight: 'normal', line: 'solid', fill: 'none', look: 'hand' }, seed };
+}
+
+/**
+ * 7g. Geometry through page elements: the same box and ellipse as check 7, but
+ * inserted with insertPlan so each carries a recipe in userData.
+ */
+export async function geometryPageElements(ctx: PageCtx): Promise<SpikeResult> {
+  const u = ctx.unit;
+  const cx = ctx.width / 2;
+  const w = 480 * u,
+    h = 240 * u;
+  const top = ctx.height / 2 - 170 * u;
+  const bottom = ctx.height / 2 + 170 * u;
+  const geo = (g: Partial<GeoSpec>): GeoSpec => ({
+    type: 'GEO_polygon',
+    points: [],
+    ellipseCenterPoint: null,
+    ellipseMajorAxisRadius: 0,
+    ellipseMinorAxisRadius: 0,
+    ellipseAngle: 0,
+    penType: 10,
+    penColor: 0,
+    penWidth: 600.001,
+    ...g,
+  });
+  const clean = { weight: 'normal', line: 'solid', fill: 'none', look: 'clean' } as const;
+  const boxRect = { left: cx - w / 2, top: top - h / 2, right: cx + w / 2, bottom: top + h / 2 };
+  const ellRect = { left: cx - w / 2, top: bottom - h / 2, right: cx + w / 2, bottom: bottom + h / 2 };
+  const box = geo({
+    points: [
+      { x: boxRect.left, y: boxRect.top },
+      { x: boxRect.right, y: boxRect.top },
+      { x: boxRect.right, y: boxRect.bottom },
+      { x: boxRect.left, y: boxRect.bottom },
+      { x: boxRect.left, y: boxRect.top },
+    ],
+  });
+  const ellipse = geo({
+    type: 'GEO_ellipse',
+    ellipseCenterPoint: { x: cx, y: bottom },
+    ellipseMajorAxisRadius: w / 2,
+    ellipseMinorAxisRadius: h / 2,
+  });
+  await insertPlan(ctx, { strokes: [], geometries: [box], bounds: boxRect }, { v: 1, shape: 'rectangle', style: clean, seed: 1 });
+  await insertPlan(ctx, { strokes: [], geometries: [ellipse], bounds: ellRect }, { v: 1, shape: 'ellipse', style: clean, seed: 1 });
+  return {
+    rect: { left: boxRect.left, top: boxRect.top, right: ellRect.right, bottom: ellRect.bottom },
+    log:
+      'Geometry via page elements: a polygon box (upper) and an ellipse (lower), each tagged with a recipe, penWidth 600.\n' +
+      'Look for: both render. Lasso each and stretch it non-proportionally, and check the lasso toolbar shows "Stencil redraw".\n' +
+      'If the polygon does not render, stop and report: the clean-look carrier depends on it.',
+  };
+}
 
 /** Hand-drawn box rendered to fit `rect` exactly, tagged with its recipe. */
 export async function handDrawnBoxAt(ctx: PageCtx, rect: Rect, seed: number): Promise<Rect> {
   const base = ctx.penInfo?.width ?? 600;
   const peak = peakThickness(base, LOCKED.swing);
-  const recipe: Recipe = { shape: 'rect', look: 'hand', seed };
+  const recipe = handRecipe(seed);
   const cx = (rect.left + rect.right) / 2,
     cy = (rect.top + rect.bottom) / 2;
   const outline = rectOutline(cx, cy, rect.right - rect.left, rect.bottom - rect.top);
@@ -332,20 +388,9 @@ export async function handDrawnBoxAt(ctx: PageCtx, rect: Rect, seed: number): Pr
  * delete the selection and render the shape fresh into that box.
  */
 export async function redrawLasso(ctx: PageCtx): Promise<SpikeResult> {
-  const elements = await call<any[]>('getLassoElements', PluginCommAPI.getLassoElements());
-  const tagged = (elements ?? []).map(e => e?.userData).filter((u: unknown) => typeof u === 'string' && u.length > 0);
-  const box = await call<Rect>('getLassoRect', PluginCommAPI.getLassoRect());
-  if (tagged.length === 0) {
-    return {
-      rect: box,
-      log: `Redraw: ${elements?.length ?? 0} lassoed elements, none carries a Stencil recipe (userData empty). Nothing changed.`,
-    };
-  }
-  let recipe: Recipe;
-  try {
-    recipe = JSON.parse(tagged[0]);
-  } catch {
-    return { rect: box, log: `Redraw: userData present but not a recipe: ${tagged[0].slice(0, 80)}` };
+  const { rect: box, recipe, count } = await readLasso();
+  if (!recipe) {
+    return { rect: box, log: `Redraw: ${count} lassoed elements, none carries a valid Stencil recipe. Nothing changed.` };
   }
   await call('deleteLassoElements', PluginCommAPI.deleteLassoElements());
   const pad = 6;
@@ -354,7 +399,7 @@ export async function redrawLasso(ctx: PageCtx): Promise<SpikeResult> {
   return {
     rect,
     log:
-      `Redraw: ${elements.length} elements, ${tagged.length} tagged, recipe ${tagged[0]}.\n` +
+      `Redraw: ${count} elements, recipe ${recipe.shape} seed ${recipe.seed}.\n` +
       `Lasso box ${Math.round(box.left)},${Math.round(box.top)} to ${Math.round(box.right)},${Math.round(box.bottom)}; deleted and redrawn into it.`,
   };
 }

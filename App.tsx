@@ -18,6 +18,7 @@ import { ensurePermission } from './src/sdk';
 import { session } from './src/session';
 import {
   dashGap,
+  geometryPageElements,
   geometryShapes,
   handDrawnBoxAt,
   handDrawnGeometry,
@@ -29,7 +30,8 @@ import {
   thicknessLadder,
   type SpikeResult,
 } from './src/spikes';
-import { currentPage, lasso, type PageCtx } from './src/strokes';
+import { currentPage, type PageCtx } from './src/strokes';
+import { selectRect } from './src/device';
 
 const REDRAW_BUTTON_ID = 400;
 const DRAG_THRESHOLD_DP = 8;
@@ -38,13 +40,14 @@ type Spike = { label: string; run: (ctx: PageCtx) => Promise<SpikeResult> };
 
 const SPIKES: Spike[] = [
   { label: '1. Plain rect (points + pressure only)', run: ctx => plainRect(ctx, false) },
-  { label: '1b. Plain rect + full metadata', run: ctx => plainRect(ctx, true) },
+  { label: '1b. Plain rect (metadata ignored since GH-3)', run: ctx => plainRect(ctx, true) },
   { label: '2. Pressure ladder (4 pen types)', run: pressureLadder },
   { label: '2b. Pressure sweep (pen 16, 400 to 3600)', run: pressureSweep },
   { label: '3. Hand-drawn rect (tagged with recipe)', run: handDrawnRect },
   { label: '4. Dash gaps in one stroke', run: dashGap },
   { label: '6. Thickness ladder (internal units)', run: thicknessLadder },
   { label: '7. Geometry box + ellipse (stretch check)', run: geometryShapes },
+  { label: '7g. Geometry via page elements', run: geometryPageElements },
   { label: '8. Hand-drawn box as one geometry', run: handDrawnGeometry },
 ];
 
@@ -138,9 +141,7 @@ export default function App() {
       return;
     }
     try {
-      await PluginManager.closePluginView();
-      await new Promise(r => setTimeout(r, 300));
-      await lasso(last);
+      await selectRect(last);
     } catch (e: any) {
       append(`Lasso failed: ${e?.message ?? e}`);
     }
@@ -151,10 +152,7 @@ export default function App() {
       return;
     }
     try {
-      await PluginManager.closePluginView();
-      await new Promise(r => setTimeout(r, 300));
-      await lasso(last);
-      await new Promise(r => setTimeout(r, 300));
+      await selectRect(last);
       const w = last.right - last.left;
       const res = (await PluginCommAPI.resizeLassoRect({
         left: last.left - 6,

@@ -30,7 +30,7 @@ The measured findings live in `README.md` ("Results" table). The ones that shape
 - Pen 16 follows pressure (400 → thin, 1600 → full width), pen 10 does not. Fills, dashes and clean outlines use pen 10.
 - Insert through `PluginCommAPI.insertPageElements`; never `saveCurrentNote` + `reloadFile` around an insert.
 - Native lasso scaling degrades shapes; shapes are sized at insert and regenerated from the recipe in `Element.userData`.
-- Close the plugin view before `lassoElements`.
+- Close the plugin view before `lassoElements`, with no timer in between: JS timers do not fire while the view is closed.
 - Touch dp × `PixelRatio.get()` = page px.
 
 ## Design record
