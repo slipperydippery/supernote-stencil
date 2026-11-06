@@ -68,8 +68,8 @@ export default function PlacementLayer({ enabled, shape, scale, onPlace }: Props
       onResponderMove={e => {
         const d = down.current;
         const p = at(e);
-        if (d && far(d, p)) {
-          setBand(preview(d, p));
+        if (d) {
+          setBand(far(d, p) ? preview(d, p) : null);
         }
       }}
       onResponderRelease={release}

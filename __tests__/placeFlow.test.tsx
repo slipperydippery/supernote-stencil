@@ -159,6 +159,20 @@ it('previews the armed shape in the box it will be rendered into while dragging'
   expect(diamond.every(c => c.x > 100 && c.x < 400 && c.y > 100 && c.y < 250)).toBe(true);
 });
 
+it('clears the preview when the pen comes back inside the tap threshold', async () => {
+  device.settings = { ...device.settings, lastShape: 'rectangle' };
+  const r = await open();
+  await act(async () => {
+    layer(r).props.onResponderGrant(ev(100, 100));
+    layer(r).props.onResponderMove(ev(300, 200));
+  });
+  expect(has(r, 'rubber-band')).toBe(true);
+  await act(async () => {
+    layer(r).props.onResponderMove(ev(103, 102));
+  });
+  expect(has(r, 'rubber-band')).toBe(false);
+});
+
 it('treats a small drag as a tap', async () => {
   device.settings = { ...device.settings, lastShape: 'rectangle' };
   const r = await open();

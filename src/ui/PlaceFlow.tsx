@@ -44,7 +44,8 @@ export default function PlaceFlow() {
   const persist = (s: Settings) => {
     latest.current = s;
     setSettings(s);
-    saving.current = saving.current.then(() => saveSettings(s));
+    // saveSettings swallows its errors; the catch keeps one rejection from wedging every later save.
+    saving.current = saving.current.then(() => saveSettings(s)).catch(() => {});
   };
 
   const pick = (def: ShapeDef) => {
