@@ -51,7 +51,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   jest.spyOn(PixelRatio, 'get').mockReturnValue(2);
   device.log = [];
-  device.settings = { style: DEFAULT_STYLE, lastShape: null, tab: 'basic' };
+  device.settings = { style: DEFAULT_STYLE, lastShape: null, tab: 'basic', armOnOpen: true };
 });
 
 it('opens the panel when nothing is remembered', async () => {
@@ -69,10 +69,27 @@ it('opens the strip armed with the remembered shape', async () => {
   expect(layer(r).props.pointerEvents).toBe('auto');
 });
 
+it('opens the panel instead, with the remembered shape pre-selected, when armOnOpen is off', async () => {
+  device.settings = { ...device.settings, lastShape: 'diamond', armOnOpen: false };
+  const r = await open();
+  expect(has(r, 'strip-preview')).toBe(false);
+  expect(r.root.findByProps({ testID: 'cell-diamond' }).props.accessibilityState).toEqual({ selected: true });
+});
+
+it('toggles and persists armOnOpen from the strip', async () => {
+  device.settings = { ...device.settings, lastShape: 'diamond' };
+  const r = await open();
+  const toggle = r.root.findByProps({ testID: 'strip-arm-on-open' });
+  expect(toggle.props.accessibilityState).toEqual({ checked: true });
+  await act(async () => toggle.props.onPress());
+  expect(mocked.saveSettings).toHaveBeenLastCalledWith({ ...device.settings, lastShape: 'diamond', armOnOpen: false });
+  expect(r.root.findByProps({ testID: 'strip-arm-on-open' }).props.accessibilityState).toEqual({ checked: false });
+});
+
 it('persists a tab tap and shows that family', async () => {
   const r = await open();
   await press(r, 'tab-flow');
-  expect(mocked.saveSettings).toHaveBeenLastCalledWith({ style: DEFAULT_STYLE, lastShape: null, tab: 'flow' });
+  expect(mocked.saveSettings).toHaveBeenLastCalledWith({ style: DEFAULT_STYLE, lastShape: null, tab: 'flow', armOnOpen: true });
   expect(has(r, 'cell-decision')).toBe(true);
   expect(has(r, 'cell-rectangle')).toBe(false);
 });
@@ -81,7 +98,7 @@ it('arms the strip on pick and persists the shape', async () => {
   const r = await open();
   await press(r, 'tab-flow');
   await press(r, 'cell-decision');
-  expect(mocked.saveSettings).toHaveBeenLastCalledWith({ style: DEFAULT_STYLE, lastShape: 'decision', tab: 'flow' });
+  expect(mocked.saveSettings).toHaveBeenLastCalledWith({ style: DEFAULT_STYLE, lastShape: 'decision', tab: 'flow', armOnOpen: true });
   expect(has(r, 'tab-flow')).toBe(false);
   expect(has(r, 'strip-icon-decision')).toBe(true);
 });
@@ -90,7 +107,7 @@ it('persists a style chip in the strip and shows it selected', async () => {
   device.settings = { ...device.settings, lastShape: 'rectangle' };
   const r = await open();
   await press(r, 'chip-line-dashed');
-  expect(mocked.saveSettings).toHaveBeenLastCalledWith({ style: { ...DEFAULT_STYLE, line: 'dashed' }, lastShape: 'rectangle', tab: 'basic' });
+  expect(mocked.saveSettings).toHaveBeenLastCalledWith({ style: { ...DEFAULT_STYLE, line: 'dashed' }, lastShape: 'rectangle', tab: 'basic', armOnOpen: true });
   expect(r.root.findAllByProps({ testID: 'chip-line-dashed' })[0].props.accessibilityState).toEqual({ selected: true });
 });
 

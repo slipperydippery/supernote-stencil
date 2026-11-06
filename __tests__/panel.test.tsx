@@ -52,4 +52,20 @@ describe('Strip', () => {
     expect(onExpand).toHaveBeenCalled();
     expect(onPress).toHaveBeenCalled();
   });
+
+  it('omits the arm-on-open control when no prop is passed (RedrawFlow)', () => {
+    const r = render(<Strip shape={SHAPES.decision} style={DEFAULT_STYLE} onStyle={noop} onExpand={noop} onClose={noop} />);
+    expect(r.root.findAllByProps({ testID: 'strip-arm-on-open' })).toHaveLength(0);
+  });
+
+  it('reports the arm-on-open toggle and reflects its checked state', () => {
+    const onToggle = jest.fn();
+    const r = render(
+      <Strip shape={SHAPES.decision} style={DEFAULT_STYLE} onStyle={noop} onExpand={noop} onClose={noop} armOnOpen={{ value: true, onToggle }} />,
+    );
+    const toggle = r.root.findByProps({ testID: 'strip-arm-on-open' });
+    expect(toggle.props.accessibilityState).toEqual({ checked: true });
+    act(() => toggle.props.onPress());
+    expect(onToggle).toHaveBeenCalled();
+  });
 });

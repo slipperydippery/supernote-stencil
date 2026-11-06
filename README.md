@@ -25,7 +25,7 @@ The armed shape, its style glyphs and a close mark sit in a strip along the top 
 
 ### Place
 
-Tap the page to place the shape at its default size under the pen, or drag to render it into the swept box. The plugin closes with the new shape lassoed. Shape, style and tab are remembered, so the next open goes straight to the strip.
+Tap the page to place the shape at its default size under the pen, or drag to render it into the swept box. The plugin closes with the new shape lassoed. Shape, style and tab are remembered, so the next open goes straight to the strip — uncheck the mark next to the strip's close button to open the shape picker instead.
 
 ### Wrap
 

@@ -37,7 +37,7 @@ export default function PlaceFlow() {
       setSettings(s);
       const remembered = s.lastShape ? SHAPES[s.lastShape] : null;
       setShape(remembered);
-      setMode(remembered ? 'strip' : 'panel');
+      setMode(remembered && s.armOnOpen ? 'strip' : 'panel');
     })().catch(fail);
   }, []);
 
@@ -55,6 +55,7 @@ export default function PlaceFlow() {
   };
   const setStyle = (style: Style) => persist({ ...latest.current, style });
   const setTab = (tab: Family) => persist({ ...latest.current, tab });
+  const toggleArmOnOpen = () => persist({ ...latest.current, armOnOpen: !latest.current.armOnOpen });
 
   const place = async (box: Box, kind: PlaceKind) => {
     if (!ctx || !shape || busy.current) {
@@ -98,7 +99,14 @@ export default function PlaceFlow() {
         />
       )}
       {mode === 'strip' && shape && (
-        <Strip shape={shape} style={settings.style} onStyle={setStyle} onExpand={() => setMode('panel')} onClose={close} />
+        <Strip
+          shape={shape}
+          style={settings.style}
+          onStyle={setStyle}
+          onExpand={() => setMode('panel')}
+          onClose={close}
+          armOnOpen={{ value: settings.armOnOpen, onToggle: toggleArmOnOpen }}
+        />
       )}
       {mode === 'error' && <Message text={`Stencil: ${error}`} onClose={close} />}
     </View>

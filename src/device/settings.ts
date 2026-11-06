@@ -2,12 +2,12 @@ import { FileUtils, PluginManager } from 'sn-plugin-lib';
 import { DEFAULT_STYLE, isStyle, type Style } from '../render/style';
 import { FAMILIES, SHAPES, type Family, type ShapeId } from '../shapes';
 
-export type Settings = { style: Style; lastShape: ShapeId | null; tab: Family };
+export type Settings = { style: Style; lastShape: ShapeId | null; tab: Family; armOnOpen: boolean };
 
-export const DEFAULT_SETTINGS: Settings = { style: DEFAULT_STYLE, lastShape: null, tab: 'basic' };
+export const DEFAULT_SETTINGS: Settings = { style: DEFAULT_STYLE, lastShape: null, tab: 'basic', armOnOpen: true };
 
 type Key = keyof Settings;
-const KEYS: Key[] = ['style', 'lastShape', 'tab'];
+const KEYS: Key[] = ['style', 'lastShape', 'tab', 'armOnOpen'];
 
 function encode(s: Settings, key: Key): string {
   switch (key) {
@@ -18,6 +18,8 @@ function encode(s: Settings, key: Key): string {
       return s.lastShape ?? 'none';
     case 'tab':
       return s.tab;
+    case 'armOnOpen':
+      return s.armOnOpen ? 'on' : 'off';
   }
 }
 
@@ -34,6 +36,9 @@ function decode(out: Settings, key: Key, raw: string): void {
       return;
     case 'tab':
       out.tab = FAMILIES.includes(raw as Family) ? (raw as Family) : DEFAULT_SETTINGS.tab;
+      return;
+    case 'armOnOpen':
+      out.armOnOpen = raw !== 'off';
       return;
   }
 }

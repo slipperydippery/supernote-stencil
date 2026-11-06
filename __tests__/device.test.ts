@@ -323,7 +323,7 @@ describe('currentPage', () => {
 
 describe('settings', () => {
   it('round-trips', async () => {
-    const s: Settings = { style: { weight: 'thick', line: 'dashed', fill: 'hatch', look: 'hand' }, lastShape: 'decision', tab: 'flow' };
+    const s: Settings = { style: { weight: 'thick', line: 'dashed', fill: 'hatch', look: 'hand' }, lastShape: 'decision', tab: 'flow', armOnOpen: false };
     await saveSettings(s);
     expect(await loadSettings()).toEqual(s);
     await saveSettings(DEFAULT_SETTINGS);
@@ -338,9 +338,9 @@ describe('settings', () => {
   });
 
   it('stores every value as a plain directory name', async () => {
-    await saveSettings({ style: { weight: 'thick', line: 'dashed', fill: 'hatch', look: 'hand' }, lastShape: 'decision', tab: 'flow' });
+    await saveSettings({ style: { weight: 'thick', line: 'dashed', fill: 'hatch', look: 'hand' }, lastShape: 'decision', tab: 'flow', armOnOpen: false });
     const leaves = [...mockState.dirs].filter(d => d.split('/').length === 5).sort();
-    expect(leaves).toEqual(['/plugin/settings/lastShape/decision', '/plugin/settings/style/thick-dashed-hatch-hand', '/plugin/settings/tab/flow']);
+    expect(leaves).toEqual(['/plugin/settings/armOnOpen/off', '/plugin/settings/lastShape/decision', '/plugin/settings/style/thick-dashed-hatch-hand', '/plugin/settings/tab/flow']);
   });
 
   it('saves the other keys when the device refuses one', async () => {
@@ -352,7 +352,7 @@ describe('settings', () => {
     } finally {
       FileUtils.makeDir.mockImplementation(real);
     }
-    expect(await loadSettings()).toEqual({ style: DEFAULT_SETTINGS.style, lastShape: 'circle', tab: 'arrow' });
+    expect(await loadSettings()).toEqual({ style: DEFAULT_SETTINGS.style, lastShape: 'circle', tab: 'arrow', armOnOpen: DEFAULT_SETTINGS.armOnOpen });
   });
 
   it('also reads plain path strings, with a trailing slash', async () => {
@@ -375,6 +375,18 @@ describe('settings', () => {
       }
     }
     mockState.dirs.add('/plugin/settings/style/thick-dashed');
-    expect(await loadSettings()).toEqual({ style: DEFAULT_SETTINGS.style, lastShape: 'circle', tab: 'arrow' });
+    expect(await loadSettings()).toEqual({ style: DEFAULT_SETTINGS.style, lastShape: 'circle', tab: 'arrow', armOnOpen: DEFAULT_SETTINGS.armOnOpen });
+  });
+
+  it('round-trips armOnOpen off, and defaults an unrecognised value to on', async () => {
+    await saveSettings({ ...DEFAULT_SETTINGS, armOnOpen: false });
+    expect((await loadSettings()).armOnOpen).toBe(false);
+    for (const d of [...mockState.dirs]) {
+      if (d.startsWith('/plugin/settings/armOnOpen/')) {
+        mockState.dirs.delete(d);
+      }
+    }
+    mockState.dirs.add('/plugin/settings/armOnOpen/garbled');
+    expect((await loadSettings()).armOnOpen).toBe(true);
   });
 });
