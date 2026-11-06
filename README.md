@@ -2,7 +2,7 @@
 
 Diagram shapes for Supernote notes, inserted as stretchable vector strokes with an optional hand-drawn look. Design review: https://claude.ai/artifact/DMhjxZZxt8c6xKaThKt88d
 
-This is the **spike build**. It has no palette yet. A sidebar button opens a screen with one button per on-device check that the design depends on. Run them on a scratch note, look at the page, and record the answers below. The palette gets built on top of what passes.
+Tap **Stencil** in the sidebar. A panel opens on the left: pick a family tab, set weight, line, fill and look with the glyph chips, tap a shape. The panel collapses into a strip along the top. Tap the page to place the shape at its default size under the pen, or drag to render it into the swept box. The plugin closes with the new shape lassoed. Shape, style and tab are remembered, so the next open goes straight to the strip; tap the preview in the strip to choose another shape.
 
 ## Build and install
 
@@ -15,23 +15,11 @@ Copy `build/outputs/stencil.snplg` to the `MyStyle` folder on the device, then *
 
 No Android SDK is needed: the plugin is pure JS, so the build only runs Metro.
 
-## The checks
+## Development
 
-Open a scratch note, open the sidebar, tap **Stencil spike**. The log line at the top reports the page size and the current pen. Each button inserts into the current page and logs what it drew and what to look for.
+The design, decisions table and reference renderer live in `docs/design-review.html`. `npm run typecheck && npm test && ./buildPlugin.sh` is the gate before every push; `npm run icons` regenerates the PNG icons under `assets/`.
 
-| # | Button | Question it answers | Pass looks like |
-|---|--------|---------------------|-----------------|
-| 1 | Plain rect | Do strokes with only points and pressures render and lasso? | Crisp 480 × 240 box at page centre. |
-| 1b | Plain rect + full metadata | Fallback if 1 fails: are contours, angles, flags or recognition points required? | Same box. If 1 fails and 1b passes, the renderer must fake those fields. |
-| 2 | Pressure ladder | Which pen type turns pressure into width, and smoothly? | In some group the three rows differ in width and the fourth row thickens left to right. Groups top to bottom: pen 16, 10, 11, 15. |
-| 3 | Hand-drawn rect | Does the locked look (bow 2, swing 0.4, overshoot 3) read as intended on e-ink? | Upper box (pen 16) shows gentle bows, thin-thick sides and small corner overshoots. Lower box (pen 10) is the same geometry at constant width for comparison. |
-| 4 | Dash gaps | Can one stroke contain a gap? | Row 1 (`flagDraw` false) or row 2 (pressure 0) shows a gap in the middle third. Row 3 is separate dash strokes for reference. |
-| 5 | Lasso last insert and close | Can the plugin leave its insert selected? | Plugin closes and the last insert sits inside a lasso box. |
-
-Two more checks need no button:
-
-- **Stretch**: lasso the plain rect and try to resize it non-proportionally. If that works, Stencil never needs a transform action.
-- **Undo**: after any insert, use the native undo. Note whether it removes the whole insert or one stroke at a time.
+The table below records what the spike plugin measured on a Manta. The product code depends on these findings.
 
 ## Results
 
@@ -79,9 +67,7 @@ Four open-source plugins cover neighbouring ground; their READMEs record device 
 
 ## Layout
 
-- `index.js` registers the sidebar button and bumps `session` on press.
-- `App.tsx` is the spike screen.
-- `src/device/` is the product's SDK layer (the spike's `src/spikes.ts` and `src/handdrawn.ts` still import the SDK until PR 3 deletes them): page context, inserting a plan as page elements tagged with a recipe, reading and replacing a lasso selection, selecting a rect, settings.
-- `src/strokes.ts` and `src/sdk.ts` are shims that keep the spike compiling against `src/device/`.
-- `src/handdrawn.ts` is the hand-drawn renderer from the design prototype, with the locked constants.
-- `src/spikes.ts` holds the individual checks.
+- `index.js` registers the sidebar button and bumps `src/session.ts` on every press; `App.tsx` routes the press to a flow.
+- `src/ui/` holds the flows (`PlaceFlow`, the placeholder `LassoFlow`), the panel, strip, style bar and placement layer.
+- `src/shapes/` and `src/render/` are pure: shape outlines, style, recipe, and the clean and hand-drawn renderers. They never import the SDK.
+- `src/device/` is the only code that talks to `sn-plugin-lib`: page context, inserting a plan tagged with its recipe, reading and replacing a lasso selection, selecting a rect, settings.
