@@ -1,5 +1,5 @@
 import type { PageCtx } from '../device';
-import type { Box, Pt, ShapeDef } from '../shapes';
+import type { Box, Pt, ShapeDef, ShapeId } from '../shapes';
 
 /** Smallest side of a dragged closed shape, page px. */
 export const MIN_SIDE = 24;
@@ -39,23 +39,24 @@ function atLeast(lo: number, hi: number, min: number): [number, number] {
   return [c - min / 2, c + min / 2];
 }
 
+/** Arrow-family shapes that read the same whichever way they are drawn. */
+const SYMMETRIC: ReadonlySet<ShapeId> = new Set(['line', 'doubleArrow']);
+
 /**
  * `dragged` runs from pen-down (left, top) to pen-up (right, bottom). Arrows
- * keep the exact swept box and, where the shape has a direction, the drag's
- * direction: a reversed side mirrors the outline. Everything else is
- * normalised, squared for keepAspect and at least MIN_SIDE on each side.
+ * keep the exact swept box, with no minimum side, and directional ones run
+ * from pen-down to pen-up: a reversed side mirrors the outline. Everything else
+ * is normalised, squared for keepAspect and at least MIN_SIDE on each side.
  */
 export function fitBox(def: ShapeDef, dragged: Box): Box {
-  const n = normalise(dragged);
   if (def.family === 'arrow') {
-    if (def.id === 'arrow') {
-      return { ...n, left: dragged.left, right: dragged.right };
+    if (SYMMETRIC.has(def.id)) {
+      return normalise(dragged);
     }
-    if (def.id === 'arrowDown') {
-      return { ...n, top: dragged.top, bottom: dragged.bottom };
-    }
-    return n;
+    // The curve runs from its frame's (0, 1) to (1, 0), so its vertical axis is swapped to start at pen-down.
+    return def.id === 'curvedArrow' ? { ...dragged, top: dragged.bottom, bottom: dragged.top } : { ...dragged };
   }
+  const n = normalise(dragged);
   let { left, top, right, bottom } = n;
   if (def.keepAspect) {
     const side = Math.min(right - left, bottom - top);

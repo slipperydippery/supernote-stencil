@@ -43,7 +43,22 @@ describe('fitBox', () => {
     expect(fitBox(SHAPES.arrow, dragLeft)).toEqual({ left: 800, top: 300, right: 200, bottom: 304 });
     expect(fitBox(SHAPES.doubleArrow, dragLeft)).toEqual({ left: 200, top: 300, right: 800, bottom: 304 });
     expect(fitBox(SHAPES.line, dragLeft)).toEqual({ left: 200, top: 300, right: 800, bottom: 304 });
-    expect(fitBox(SHAPES.arrowDown, { left: 104, top: 900, right: 100, bottom: 300 })).toEqual({ left: 100, top: 900, right: 104, bottom: 300 });
+    expect(fitBox(SHAPES.arrowDown, { left: 104, top: 900, right: 100, bottom: 300 })).toEqual({ left: 104, top: 900, right: 100, bottom: 300 });
+  });
+
+  it('runs elbow and curved arrows from pen-down to the tip at pen-up', () => {
+    const drags = [
+      { left: 800, top: 600, right: 200, bottom: 300 },
+      { left: 200, top: 300, right: 800, bottom: 600 },
+      { left: 200, top: 600, right: 800, bottom: 300 },
+    ];
+    for (const def of [SHAPES.elbowArrow, SHAPES.curvedArrow]) {
+      for (const d of drags) {
+        const shaft = renderShape(def, fitBox(def, d), DEFAULT_STYLE, 1).geometries[0].points;
+        expect([def.id, shaft[0]]).toEqual([def.id, { x: d.left, y: d.top }]);
+        expect([def.id, shaft[shaft.length - 1]]).toEqual([def.id, { x: d.right, y: d.bottom }]);
+      }
+    }
   });
 
   it('an arrow dragged right-to-left points left, with normalised bounds', () => {
