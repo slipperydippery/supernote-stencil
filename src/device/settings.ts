@@ -12,7 +12,8 @@ const KEYS: Key[] = ['style', 'lastShape', 'tab'];
 function encode(s: Settings, key: Key): string {
   switch (key) {
     case 'style':
-      return JSON.stringify(s.style);
+      // Plain words: the value is a directory name, so keep it to [a-z-] rather than encoded JSON.
+      return [s.style.weight, s.style.line, s.style.fill, s.style.look].join('-');
     case 'lastShape':
       return s.lastShape ?? 'none';
     case 'tab':
@@ -23,11 +24,9 @@ function encode(s: Settings, key: Key): string {
 function decode(out: Settings, key: Key, raw: string): void {
   switch (key) {
     case 'style': {
-      let style: unknown = null;
-      try {
-        style = JSON.parse(raw);
-      } catch {}
-      out.style = isStyle(style) ? style : { ...DEFAULT_STYLE };
+      const [weight, line, fill, look] = raw.split('-');
+      const style = { weight, line, fill, look };
+      out.style = raw.split('-').length === 4 && isStyle(style) ? style : { ...DEFAULT_STYLE };
       return;
     }
     case 'lastShape':
@@ -55,17 +54,14 @@ export async function loadSettings(): Promise<Settings> {
       return settings;
     }
     for (const key of KEYS) {
-      const entries = (await FileUtils.listFiles(`${dir}/${key}`)) ?? [];
-      if (entries.length === 0) {
-        continue;
-      }
-      let raw: string;
       try {
-        raw = decodeURIComponent(entries[0].slice(entries[0].lastIndexOf('/') + 1));
-      } catch {
-        continue;
+        const entries = (await FileUtils.listFiles(`${dir}/${key}`)) ?? [];
+        if (entries.length > 0) {
+          decode(settings, key, decodeURIComponent(entries[0].replace(/\/+$/, '').split('/').pop() ?? ''));
+        }
+      } catch (e) {
+        console.warn(`loadSettings: ${key} unreadable, using default`, e);
       }
-      decode(settings, key, raw);
     }
   } catch (e) {
     console.warn('loadSettings failed, using defaults', e);
@@ -80,13 +76,18 @@ export async function saveSettings(s: Settings): Promise<void> {
       return;
     }
     await FileUtils.makeDir(dir);
+    // One key per try, so a key the device refuses cannot take the others with it.
     for (const key of KEYS) {
-      const keyDir = `${dir}/${key}`;
-      if (await FileUtils.exists(keyDir)) {
-        await FileUtils.deleteDir(keyDir);
+      try {
+        const keyDir = `${dir}/${key}`;
+        if (await FileUtils.exists(keyDir)) {
+          await FileUtils.deleteDir(keyDir);
+        }
+        await FileUtils.makeDir(keyDir);
+        await FileUtils.makeDir(`${keyDir}/${encodeURIComponent(encode(s, key))}`);
+      } catch (e) {
+        console.warn(`saveSettings: ${key} not saved`, e);
       }
-      await FileUtils.makeDir(keyDir);
-      await FileUtils.makeDir(`${keyDir}/${encodeURIComponent(encode(s, key))}`);
     }
   } catch (e) {
     console.warn('saveSettings failed', e);

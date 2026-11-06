@@ -270,14 +270,44 @@ describe('settings', () => {
     expect(DEFAULT_SETTINGS.style.weight).toBe('normal');
   });
 
-  it('falls back to the default style on corrupt JSON and keeps the other keys', async () => {
+  it('stores every value as a plain directory name', async () => {
+    await saveSettings({ style: { weight: 'thick', line: 'dashed', fill: 'hatch', look: 'hand' }, lastShape: 'decision', tab: 'flow' });
+    const leaves = [...mockState.dirs].filter(d => d.split('/').length === 5).sort();
+    expect(leaves).toEqual(['/plugin/settings/lastShape/decision', '/plugin/settings/style/thick-dashed-hatch-hand', '/plugin/settings/tab/flow']);
+  });
+
+  it('saves the other keys when the device refuses one', async () => {
+    const { FileUtils } = require('sn-plugin-lib');
+    const real = FileUtils.makeDir.getMockImplementation();
+    FileUtils.makeDir.mockImplementation((p: string) => (p.startsWith('/plugin/settings/style/') ? Promise.reject(new Error('EINVAL')) : real(p)));
+    try {
+      await saveSettings({ ...DEFAULT_SETTINGS, lastShape: 'circle', tab: 'arrow' });
+    } finally {
+      FileUtils.makeDir.mockImplementation(real);
+    }
+    expect(await loadSettings()).toEqual({ style: DEFAULT_SETTINGS.style, lastShape: 'circle', tab: 'arrow' });
+  });
+
+  it('reads entries listed with a trailing slash', async () => {
+    const { FileUtils } = require('sn-plugin-lib');
+    await saveSettings({ ...DEFAULT_SETTINGS, lastShape: 'circle' });
+    const real = FileUtils.listFiles.getMockImplementation();
+    FileUtils.listFiles.mockImplementation((p: string) => real(p).then((l: string[]) => l.map(e => `${e}/`)));
+    try {
+      expect((await loadSettings()).lastShape).toBe('circle');
+    } finally {
+      FileUtils.listFiles.mockImplementation(real);
+    }
+  });
+
+  it('falls back to the default style on a corrupt value and keeps the other keys', async () => {
     await saveSettings({ ...DEFAULT_SETTINGS, lastShape: 'circle', tab: 'arrow' });
     for (const d of [...mockState.dirs]) {
       if (d.startsWith('/plugin/settings/style/')) {
         mockState.dirs.delete(d);
       }
     }
-    mockState.dirs.add(`/plugin/settings/style/${encodeURIComponent('{"weight":')}`);
+    mockState.dirs.add('/plugin/settings/style/thick-dashed');
     expect(await loadSettings()).toEqual({ style: DEFAULT_SETTINGS.style, lastShape: 'circle', tab: 'arrow' });
   });
 });
