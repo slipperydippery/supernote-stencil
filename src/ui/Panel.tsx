@@ -22,6 +22,10 @@ export type PanelProps = {
 
 export default function Panel({ tab, onTab, style, onStyle, selected, onPick, onClose, title, families }: PanelProps) {
   const visibleFamilies = families ?? FAMILIES;
+  // A caller-supplied tab outside its own families list (a stale remembered tab
+  // restricted by a narrower `families`) would otherwise render a grid for a
+  // family with no visible tab button; fall back to the first visible one.
+  const activeTab = visibleFamilies.includes(tab) ? tab : visibleFamilies[0];
   return (
     <View style={styles.panel}>
       <View style={styles.header}>
@@ -36,16 +40,16 @@ export default function Panel({ tab, onTab, style, onStyle, selected, onPick, on
             key={f}
             testID={`tab-${f}`}
             accessibilityRole="tab"
-            accessibilityState={{ selected: f === tab }}
-            onPress={() => f !== tab && onTab(f)}
-            style={[styles.tab, f === tab && styles.tabOn]}>
-            <Text style={[styles.tabText, f === tab && styles.tabTextOn]}>{TAB_LABEL[f]}</Text>
+            accessibilityState={{ selected: f === activeTab }}
+            onPress={() => f !== activeTab && onTab(f)}
+            style={[styles.tab, f === activeTab && styles.tabOn]}>
+            <Text style={[styles.tabText, f === activeTab && styles.tabTextOn]}>{TAB_LABEL[f]}</Text>
           </Pressable>
         ))}
       </View>
       <StyleBar style={style} onStyle={onStyle} size="panel" />
       <View style={styles.grid}>
-        {shapesIn(tab).map(def => (
+        {shapesIn(activeTab).map(def => (
           <Pressable
             key={def.id}
             testID={`cell-${def.id}`}
