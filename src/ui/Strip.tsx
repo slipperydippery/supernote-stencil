@@ -13,9 +13,11 @@ export type StripProps = {
   onExpand(): void;
   onClose(): void;
   action?: { label: string; onPress(): void };
+  /** Only PlaceFlow passes this: whether opening Stencil from the sidebar should arm the strip again. RedrawFlow's reuse of Strip has no opinion on it. */
+  armOnOpen?: { value: boolean; onToggle(): void };
 };
 
-export default function Strip({ shape, style, onStyle, onExpand, onClose, action }: StripProps) {
+export default function Strip({ shape, style, onStyle, onExpand, onClose, action, armOnOpen }: StripProps) {
   return (
     <View style={styles.strip}>
       <Pressable testID="strip-preview" accessibilityRole="button" accessibilityLabel={`${shape.label}, choose another shape`} onPress={onExpand} style={styles.preview}>
@@ -24,6 +26,17 @@ export default function Strip({ shape, style, onStyle, onExpand, onClose, action
       <View style={styles.bar}>
         <StyleBar style={style} onStyle={onStyle} size="strip" />
       </View>
+      {armOnOpen && (
+        <Pressable
+          testID="strip-arm-on-open"
+          accessibilityRole="checkbox"
+          accessibilityLabel="Open straight to the strip next time"
+          accessibilityState={{ checked: armOnOpen.value }}
+          onPress={armOnOpen.onToggle}
+          style={[styles.mark, armOnOpen.value && styles.markOn]}>
+          {armOnOpen.value && <Text style={[styles.markText, styles.markTextOn]}>✓</Text>}
+        </Pressable>
+      )}
       {action && (
         <Pressable testID="strip-action" accessibilityRole="button" accessibilityLabel={action.label} onPress={action.onPress} style={[styles.mark, styles.markOn]}>
           <Text style={[styles.markText, styles.markTextOn]}>{action.label}</Text>

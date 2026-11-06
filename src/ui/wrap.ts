@@ -37,9 +37,15 @@ export function wrapBox(def: ShapeDef, selection: Box, padding: number): Box {
     case 'diamond':
     case 'decision':
       return grow(padded, { x: width(padded) * 0.5, y: height(padded) * 0.5 });
-    case 'circle':
     case 'ellipse':
       return grow(padded, { x: width(padded) * 0.21, y: height(padded) * 0.21 });
+    case 'circle': {
+      // keepAspect: a circle must stay a circle regardless of the selection's own
+      // aspect ratio (a wrapped word is wider than tall), so square the padded box
+      // first, the same way 'square' does, before applying ellipse's growth factor.
+      const side = Math.max(width(padded), height(padded));
+      return grow(centredSquare(padded, side), { x: side * 0.21, y: side * 0.21 });
+    }
     case 'square': {
       const side = Math.max(width(padded), height(padded));
       return centredSquare(padded, side);

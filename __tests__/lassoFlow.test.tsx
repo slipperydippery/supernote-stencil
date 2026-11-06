@@ -31,7 +31,7 @@ const press = async (r: ReactTestRenderer, testID: string) => {
 beforeEach(() => {
   jest.clearAllMocks();
   device.log = [];
-  device.settings = { style: DEFAULT_STYLE, lastShape: null, tab: 'basic' };
+  device.settings = { style: DEFAULT_STYLE, lastShape: null, tab: 'basic', armOnOpen: true };
   mocked.readLasso.mockResolvedValue({ rect: RECT, liveRect: RECT, recipe: null, count: 3, recipes: 0 });
 });
 
@@ -64,7 +64,7 @@ it('inserts around the lasso rect and selects shape and content together on pick
   expect(plan.bounds).toEqual({ left: 76, top: 76, right: 324, bottom: 224 });
   expect(recipe).toMatchObject({ v: 1, shape: 'rounded', style: DEFAULT_STYLE });
   expect(mocked.selectRect).toHaveBeenCalledWith({ left: 76, top: 76, right: 324, bottom: 224 });
-  expect(mocked.saveSettings).toHaveBeenLastCalledWith({ style: DEFAULT_STYLE, lastShape: 'rounded', tab: 'basic' });
+  expect(mocked.saveSettings).toHaveBeenLastCalledWith({ style: DEFAULT_STYLE, lastShape: 'rounded', tab: 'basic', armOnOpen: true });
 });
 
 it('closes the view from the wrap panel', async () => {

@@ -68,16 +68,24 @@ describe('wrapBox', () => {
     expect(wrapBox(SHAPES.decision, selection, 24)).toEqual(wrapBox(SHAPES.diamond, selection, 24));
   });
 
-  it('grows a circle by 21% per side', () => {
+  it('grows an ellipse by 21% per side, keeping the selection\'s own aspect ratio', () => {
     const padded = wrapBox(SHAPES.rectangle, selection, 24);
-    const box = wrapBox(SHAPES.circle, selection, 24);
+    const box = wrapBox(SHAPES.ellipse, selection, 24);
     const dx = (padded.right - padded.left) * 0.21;
     const dy = (padded.bottom - padded.top) * 0.21;
     expect(box).toEqual({ left: padded.left - dx, top: padded.top - dy, right: padded.right + dx, bottom: padded.bottom + dy });
   });
 
-  it('treats ellipse the same as circle', () => {
-    expect(wrapBox(SHAPES.ellipse, selection, 24)).toEqual(wrapBox(SHAPES.circle, selection, 24));
+  it('squares a circle (keepAspect) before growing it by 21%, unlike ellipse', () => {
+    // `selection` is wider than tall, so a circle that failed to square first would come out oval.
+    const box = wrapBox(SHAPES.circle, selection, 24);
+    expect(box.right - box.left).toBeCloseTo(box.bottom - box.top);
+    expect(wrapBox(SHAPES.circle, selection, 24)).not.toEqual(wrapBox(SHAPES.ellipse, selection, 24));
+  });
+
+  it('contains the padded selection inside the real circle outline, for a wide selection too', () => {
+    expect(wrapContainsPadded(SHAPES.circle, selection, 24)).toBe(true);
+    expect(wrapContainsPadded(SHAPES.circle, { left: 0, top: 0, right: 600, bottom: 80 }, 24)).toBe(true);
   });
 
   it('squares the padded box, centred, containing it', () => {
