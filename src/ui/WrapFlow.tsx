@@ -60,9 +60,11 @@ export default function WrapFlow({ selection }: { selection: Box }) {
       const seed = Math.floor(Math.random() * 1_000_000);
       const recipe: Recipe = { v: 1, shape: def.id, style, seed };
       await saving.current;
-      await insertPlan(ctx, renderShape(def, box, style, seed), recipe);
+      // The hand look's bow and overshoot can push a stroke's actual extent past
+      // the nominal box; insertPlan's returned bounds reflect that, box does not.
+      const bounds = await insertPlan(ctx, renderShape(def, box, style, seed), recipe);
       // Closes the view and lassoes shape and content together; JS stops once the view is closed.
-      await selectRect(union(box, selection));
+      await selectRect(union(bounds, selection));
       persist({ ...latest.current, lastShape: def.id });
     } catch (e) {
       busy.current = false;
