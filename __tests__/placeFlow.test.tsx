@@ -138,25 +138,28 @@ async function dragPreview(shape: string, from: [number, number], to: [number, n
     layer(r).props.onResponderMove(ev(...to));
   });
   const band = r.root.findAllByProps({ testID: 'rubber-band' }).find(n => typeof n.type !== 'string')!;
-  // Segment centres in dp.
+  // One axis-aligned rect per node: {left, top, width, height}, centre in dp.
   return band.findAll(n => n.type === View && n.props.style && !n.props.testID).map(n => {
     const st = Object.assign({}, ...[n.props.style].flat(Infinity));
-    return { x: st.left + (st.width - 2) / 2, y: st.top + 1 };
+    return { x: st.left + st.width / 2, y: st.top + st.height / 2, w: st.width, h: st.height };
   });
 }
 
 it('previews the armed shape in the box it will be rendered into while dragging', async () => {
   // Square: a dp drag (100, 100)–(400, 250) fits to page (350, 200)–(650, 500), dp (175, 100)–(325, 250).
+  // Every edge is axis-aligned, so each is still exactly one rect, as before the diagonal-preview fix.
   const square = await dragPreview('square', [100, 100], [400, 250]);
   expect(square).toHaveLength(4);
   for (const c of square) {
     const onEdge = [175, 325].some(x => Math.abs(c.x - x) < 1e-6) || [100, 250].some(y => Math.abs(c.y - y) < 1e-6);
     expect(onEdge).toBe(true);
   }
-  // Diamond: no segment centre lies on the swept box's edges.
+  // Diamond: every edge is diagonal, so PlacementLayer's live preview approximates each as a staircase
+  // of several axis-aligned rects instead of one rotated one (rotated views garble under the device's
+  // partial-refresh pen tracking — see ShapePreview). More rects than plain edges, none of them rotated.
   const diamond = await dragPreview('diamond', [100, 100], [400, 250]);
-  expect(diamond).toHaveLength(4);
-  expect(diamond.every(c => c.x > 100 && c.x < 400 && c.y > 100 && c.y < 250)).toBe(true);
+  expect(diamond.length).toBeGreaterThan(4);
+  expect(diamond.every(c => Math.min(c.w, c.h) === 2)).toBe(true);
 });
 
 it('clears the preview when the pen comes back inside the tap threshold', async () => {
