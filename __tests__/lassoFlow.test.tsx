@@ -66,9 +66,17 @@ it('inserts around the lasso rect and selects shape and content together on pick
   expect(mocked.saveSettings).toHaveBeenLastCalledWith({ style: DEFAULT_STYLE, lastShape: 'rounded', tab: 'basic' });
 });
 
-it('closes the view without a recipe', async () => {
-  mocked.readLasso.mockResolvedValue({ rect: RECT, recipe: null, count: 0 });
+it('closes the view from the wrap panel', async () => {
   const r = await open();
   await press(r, 'panel-close');
+  expect(mocked.closeView).toHaveBeenCalled();
+});
+
+it('shows a notice instead of wrap when the lasso caught nothing', async () => {
+  mocked.readLasso.mockResolvedValue({ rect: RECT, recipe: null, count: 0 });
+  const r = await open();
+  expect(JSON.stringify(r.toJSON())).toContain('nothing selected');
+  expect(has(r, 'panel-close')).toBe(false);
+  await press(r, 'message-close');
   expect(mocked.closeView).toHaveBeenCalled();
 });

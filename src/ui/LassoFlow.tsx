@@ -39,6 +39,13 @@ export default function LassoFlow() {
       </View>
     );
   }
+  if (sel.count === 0) {
+    return (
+      <View style={styles.root}>
+        <Message text="Stencil: nothing selected" onClose={close} />
+      </View>
+    );
+  }
   return (
     <View style={styles.root}>
       <WrapFlow selection={sel.rect} />
