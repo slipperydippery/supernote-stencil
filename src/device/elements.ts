@@ -1,7 +1,8 @@
 import { Element, PluginCommAPI } from 'sn-plugin-lib';
-import type { Box, Plan, Recipe } from './contracts';
+import type { Plan } from '../render/plan';
+import { parseRecipe, serializeRecipe, type Recipe } from '../render/recipe';
+import type { Box } from '../shapes';
 import type { PageCtx } from './page';
-import { parseRecipeLocal } from './recipe';
 import { call, recycle } from './sdk';
 
 /** Integer widths render as hairlines (finding "thickness unit"), so always carry a fraction. */
@@ -15,7 +16,7 @@ function fractional(w: number): number {
  * Stroke metadata (contours, angles, recognition points, flagDraw) is never
  * written; it breaks lasso hit-testing.
  */
-export async function insertTagged(ctx: PageCtx, plan: Plan, tag: string): Promise<Box> {
+async function insertTagged(ctx: PageCtx, plan: Plan, tag: string): Promise<Box> {
   const created: Element[] = [];
   try {
     for (const s of plan.strokes) {
@@ -64,9 +65,7 @@ export async function insertTagged(ctx: PageCtx, plan: Plan, tag: string): Promi
 
 /** Every element carries the recipe, so any one of them identifies the shape for redraw. */
 export function insertPlan(ctx: PageCtx, plan: Plan, recipe: Recipe): Promise<Box> {
-  // Same bytes as PR 1's serializeRecipe as long as the recipe was built with keys v, shape, style, seed.
-  const tag = JSON.stringify({ v: recipe.v, shape: recipe.shape, style: recipe.style, seed: recipe.seed });
-  return insertTagged(ctx, plan, tag);
+  return insertTagged(ctx, plan, serializeRecipe(recipe));
 }
 
 /** `rect` is the visual lasso box, inflated by half the stroke width; callers shrink it. */
@@ -78,7 +77,7 @@ export async function readLasso(): Promise<{ rect: Box; recipe: Recipe | null; c
     const rect = await call<Box>('getLassoRect', PluginCommAPI.getLassoRect());
     let recipe: Recipe | null = null;
     for (const e of elements) {
-      recipe = parseRecipeLocal(e?.userData);
+      recipe = parseRecipe(e?.userData);
       if (recipe) {
         break;
       }

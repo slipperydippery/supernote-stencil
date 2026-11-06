@@ -21,3 +21,18 @@ export function widthPx(width: number): number {
 export function firmwareWidth(width: number): number {
   return Math.round(width) + 0.001;
 }
+
+/** Every value of each style key, in style-bar order. */
+export const STYLE_VALUES: { [K in keyof Style]: readonly Style[K][] } = { weight: WEIGHTS, line: LINES, fill: FILLS, look: LOOKS };
+
+/** Exactly the four style keys, each with a known value. */
+export function isStyle(value: unknown): value is Style {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+  const o = value as Record<string, unknown>;
+  return (
+    Object.keys(o).length === 4 &&
+    (Object.keys(STYLE_VALUES) as (keyof Style)[]).every(k => (STYLE_VALUES[k] as readonly unknown[]).includes(o[k]))
+  );
+}

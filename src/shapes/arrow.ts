@@ -1,9 +1,15 @@
 /**
  * Open shapes. The first polyline is the shaft, every further polyline is an
  * arrow head. Lines keep working on a degenerate box (zero height or width).
+ * A box with left > right (or top > bottom) mirrors the shape, so an arrow
+ * follows the drag that made it.
  */
-import { at, frame, head } from './geom';
+import { at, frame, head, type Frame } from './geom';
 import type { Pt, ShapeDef } from './types';
+
+/** Head angle for a shaft running along +x (or +y) of the frame, mirrored with it. */
+const east = (f: Frame) => (f.w < 0 ? Math.PI : 0);
+const south = (f: Frame) => (f.h < 0 ? -Math.PI / 2 : Math.PI / 2);
 
 export const ARROW: ShapeDef[] = [
   {
@@ -20,7 +26,7 @@ export const ARROW: ShapeDef[] = [
     outline: box => {
       const f = frame(box);
       const end = at(f, 1, 0.5);
-      return [[at(f, 0, 0.5), end], head(end, 0, f)];
+      return [[at(f, 0, 0.5), end], head(end, east(f), f)];
     },
   },
   {
@@ -30,7 +36,7 @@ export const ARROW: ShapeDef[] = [
       const f = frame(box);
       const start = at(f, 0, 0.5);
       const end = at(f, 1, 0.5);
-      return [[start, end], head(end, 0, f), head(start, Math.PI, f)];
+      return [[start, end], head(end, east(f), f), head(start, east(f) + Math.PI, f)];
     },
   },
   {
@@ -39,7 +45,7 @@ export const ARROW: ShapeDef[] = [
     outline: box => {
       const f = frame(box);
       const end = at(f, 1, 1);
-      return [[at(f, 0, 0), at(f, 0.5, 0), at(f, 0.5, 1), end], head(end, 0, f)];
+      return [[at(f, 0, 0), at(f, 0.5, 0), at(f, 0.5, 1), end], head(end, east(f), f)];
     },
   },
   {
@@ -62,7 +68,7 @@ export const ARROW: ShapeDef[] = [
     outline: box => {
       const f = frame(box);
       const end = at(f, 0.5, 1);
-      return [[at(f, 0.5, 0), end], head(end, Math.PI / 2, f)];
+      return [[at(f, 0.5, 0), end], head(end, south(f), f)];
     },
   },
 ];

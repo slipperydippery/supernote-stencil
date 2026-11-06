@@ -1,4 +1,5 @@
-import type { Plan, Recipe } from '../src/device/contracts';
+import type { Plan } from '../src/render/plan';
+import type { Recipe } from '../src/render/recipe';
 
 type Fake = {
   log: string[];
@@ -47,12 +48,20 @@ jest.mock('sn-plugin-lib', () => {
         record('getLassoRect');
         return mockOk(mockState.lassoRect);
       }),
+      setLassoBoxState: jest.fn((state: number) => {
+        record(`setLassoBoxState:${state}`);
+        return mockOk(true);
+      }),
       deleteLassoElements: jest.fn(() => {
         record('deleteLassoElements');
         return mockOk(true);
       }),
-      lassoElements: jest.fn(() => {
+      // Like the SDK's RectSchema: integer coordinates only.
+      lassoElements: jest.fn((r: Record<string, number>) => {
         record('lassoElements');
+        if (Object.values(r).some(v => !Number.isInteger(v))) {
+          return Promise.resolve({ success: false, result: null, error: { code: 101, message: 'lassoElements.left must be an integer' } });
+        }
         return mockOk(true);
       }),
       reloadFile: jest.fn(() => record('reloadFile')),
@@ -97,8 +106,11 @@ jest.mock('sn-plugin-lib', () => {
         }
         return Promise.resolve(true);
       }),
+      // What a Manta returns, not the string[] the SDK's type declares.
       listFiles: jest.fn((p: string) =>
-        Promise.resolve([...mockState.dirs].filter(d => d.startsWith(`${p}/`) && !d.slice(p.length + 1).includes('/'))),
+        Promise.resolve(
+          [...mockState.dirs].filter(d => d.startsWith(`${p}/`) && !d.slice(p.length + 1).includes('/')).map(path => ({ type: 0, path })),
+        ),
       ),
     },
   };
@@ -239,6 +251,23 @@ describe('selectRect', () => {
     expect(mockState.log).toEqual(['closePluginView', 'lassoElements']);
     expect(PluginCommAPI.lassoElements).toHaveBeenCalledWith({ left: 94, top: 194, right: 306, bottom: 406 });
   });
+
+  it('keeps a selection that holds only the inserted elements', async () => {
+    mockState.lassoElements = [{ uuid: 'a' }, { uuid: 'b' }];
+    await selectRect({ left: 100, top: 200, right: 300, bottom: 400 }, 2);
+    expect(mockState.log).toEqual(['closePluginView', 'lassoElements', 'clearElementCache', 'getLassoElements', 'recycle:a', 'recycle:b']);
+  });
+
+  it('drops a selection that also caught existing ink', async () => {
+    mockState.lassoElements = [{ uuid: 'a' }, { uuid: 'b' }, { uuid: 'text' }];
+    await selectRect({ left: 100, top: 200, right: 300, bottom: 400 }, 2);
+    expect(mockState.log).toEqual(['closePluginView', 'lassoElements', 'clearElementCache', 'getLassoElements', 'recycle:a', 'recycle:b', 'recycle:text', 'setLassoBoxState:2']);
+  });
+
+  it('rounds a fractional rect outwards to whole pixels', async () => {
+    await selectRect({ left: 100.4, top: 200.6, right: 300.2, bottom: 399.5 });
+    expect(PluginCommAPI.lassoElements).toHaveBeenCalledWith({ left: 94, top: 194, right: 307, bottom: 406 });
+  });
 });
 
 describe('currentPage', () => {
@@ -269,14 +298,44 @@ describe('settings', () => {
     expect(DEFAULT_SETTINGS.style.weight).toBe('normal');
   });
 
-  it('falls back to the default style on corrupt JSON and keeps the other keys', async () => {
+  it('stores every value as a plain directory name', async () => {
+    await saveSettings({ style: { weight: 'thick', line: 'dashed', fill: 'hatch', look: 'hand' }, lastShape: 'decision', tab: 'flow' });
+    const leaves = [...mockState.dirs].filter(d => d.split('/').length === 5).sort();
+    expect(leaves).toEqual(['/plugin/settings/lastShape/decision', '/plugin/settings/style/thick-dashed-hatch-hand', '/plugin/settings/tab/flow']);
+  });
+
+  it('saves the other keys when the device refuses one', async () => {
+    const { FileUtils } = require('sn-plugin-lib');
+    const real = FileUtils.makeDir.getMockImplementation();
+    FileUtils.makeDir.mockImplementation((p: string) => (p.startsWith('/plugin/settings/style/') ? Promise.reject(new Error('EINVAL')) : real(p)));
+    try {
+      await saveSettings({ ...DEFAULT_SETTINGS, lastShape: 'circle', tab: 'arrow' });
+    } finally {
+      FileUtils.makeDir.mockImplementation(real);
+    }
+    expect(await loadSettings()).toEqual({ style: DEFAULT_SETTINGS.style, lastShape: 'circle', tab: 'arrow' });
+  });
+
+  it('also reads plain path strings, with a trailing slash', async () => {
+    const { FileUtils } = require('sn-plugin-lib');
+    await saveSettings({ ...DEFAULT_SETTINGS, lastShape: 'circle' });
+    const real = FileUtils.listFiles.getMockImplementation();
+    FileUtils.listFiles.mockImplementation((p: string) => real(p).then((l: { path: string }[]) => l.map(e => `${e.path}/`)));
+    try {
+      expect((await loadSettings()).lastShape).toBe('circle');
+    } finally {
+      FileUtils.listFiles.mockImplementation(real);
+    }
+  });
+
+  it('falls back to the default style on a corrupt value and keeps the other keys', async () => {
     await saveSettings({ ...DEFAULT_SETTINGS, lastShape: 'circle', tab: 'arrow' });
     for (const d of [...mockState.dirs]) {
       if (d.startsWith('/plugin/settings/style/')) {
         mockState.dirs.delete(d);
       }
     }
-    mockState.dirs.add(`/plugin/settings/style/${encodeURIComponent('{"weight":')}`);
+    mockState.dirs.add('/plugin/settings/style/thick-dashed');
     expect(await loadSettings()).toEqual({ style: DEFAULT_SETTINGS.style, lastShape: 'circle', tab: 'arrow' });
   });
 });
