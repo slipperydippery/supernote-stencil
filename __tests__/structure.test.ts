@@ -16,8 +16,9 @@ const imports = (f: string) => [...readFileSync(join(root, f), 'utf8').matchAll(
 it('the spike modules and shims are gone and nothing imports them', () => {
   const gone = ['src/spikes.ts', 'src/handdrawn.ts', 'src/strokes.ts', 'src/sdk.ts', 'src/device/spikeCompat.ts', 'src/device/contracts.ts', 'src/device/recipe.ts'];
   expect(gone.filter(f => existsSync(join(root, f)))).toEqual([]);
-  const bad = /\/(spikes|handdrawn|strokes|spikeCompat|contracts)$|^\.\/(src\/)?sdk$|^\.\/recipe$/;
-  const hits = sources.flatMap(f => imports(f).filter(i => bad.test(i) && !(f.startsWith('src/device/') && i === './sdk')).map(i => `${f}: ${i}`));
+  const bad = /(^|\/)(spikes|handdrawn|strokes|spikeCompat|contracts|sdk|recipe)$/;
+  const allowed = (f: string, i: string) => i.endsWith('render/recipe') || (f.startsWith('src/device/') && i === './sdk');
+  const hits = sources.flatMap(f => imports(f).filter(i => bad.test(i) && !allowed(f, i)).map(i => `${f}: ${i}`));
   expect(hits).toEqual([]);
 });
 

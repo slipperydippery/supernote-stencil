@@ -78,7 +78,7 @@ export default function PlaceFlow() {
   };
 
   const close = () => {
-    saving.current.then(closeView, closeView);
+    saving.current.then(closeView, closeView).catch(fail);
   };
 
   return (

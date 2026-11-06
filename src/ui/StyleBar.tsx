@@ -1,10 +1,8 @@
 import React from 'react';
 import { Image, Pressable, StyleSheet, View } from 'react-native';
-import { FILLS, LINES, LOOKS, WEIGHTS, type Style } from '../render/style';
+import { STYLE_VALUES as GROUPS, type Style } from '../render/style';
 import { GLYPHS, type GlyphKey } from './icons';
 import { CHIP, INK, PAPER, RULE, type ChipSize } from './theme';
-
-const GROUPS: { [K in keyof Style]: readonly Style[K][] } = { weight: WEIGHTS, line: LINES, fill: FILLS, look: LOOKS };
 
 type Props = { style: Style; onStyle(s: Style): void; size: ChipSize };
 
