@@ -1,25 +1,80 @@
 # Stencil — Supernote plugin
 
-Diagram shapes for Supernote notes, inserted as stretchable vector strokes with an optional hand-drawn look. Design review: https://claude.ai/artifact/DMhjxZZxt8c6xKaThKt88d
+Stencil places diagram shapes on a Supernote page with the pen — flowchart boxes, basic shapes and arrows, clean or hand-drawn — sized by a tap or a drag and never scaled afterwards. A lassoed handwritten sketch can be wrapped in a shape, and a placed shape can be redrawn into a new box. Design review: https://claude.ai/artifact/DMhjxZZxt8c6xKaThKt88d
 
-Tap **Stencil** in the sidebar. A panel opens on the left: pick a family tab, set weight, line, fill and look with the glyph chips, tap a shape. The panel collapses into a strip along the top. Tap the page to place the shape at its default size under the pen, or drag to render it into the swept box. The plugin closes with the new shape lassoed. Shape, style and tab are remembered, so the next open goes straight to the strip; tap the preview in the strip to choose another shape.
-
-## Build and install
+## Install
 
 ```sh
 npm ci
 ./buildPlugin.sh
 ```
 
-Copy `build/outputs/stencil.snplg` to the `MyStyle` folder on the device, then **Settings → Apps → Plugins → Add Plugin**. The plugin asks for file read and write permission on first use; choose *Always allow*.
+Copy `build/outputs/stencil.snplg` to the `MyStyle` folder on the device (USB MTP; the volume is named "Supernote Nomad" even for a Manta), then **Settings → Apps → Plugins → Add Plugin**. The plugin asks for file read and write permission on first use; choose *Always allow*.
 
 No Android SDK is needed: the plugin is pure JS, so the build only runs Metro.
 
+## Using it
+
+### Panel
+
+Tap **Stencil** in the sidebar. A panel opens on the left: pick a family tab (Basic, Flow, Arrows), set weight, line, fill and look with the glyph chips, then tap a shape to arm it and collapse the panel.
+
+### Strip
+
+The armed shape, its style glyphs and a close mark sit in a strip along the top edge; the rest of the page stays free below it. Tap the strip's preview to reopen the panel and pick another shape.
+
+### Place
+
+Tap the page to place the shape at its default size under the pen, or drag to render it into the swept box. The strip closes and the new shape stays lassoed. Shape, style and tab are remembered, so the next open goes straight to the strip.
+
+### Wrap
+
+Lasso a handwritten selection, then tap **Stencil** on the lasso toolbar. The panel opens expanded over the selection's box; tap a shape to wrap it at once — no strip, no page tap.
+
+### Redraw
+
+Lasso a placed Stencil shape, pull the native resize handle to the size you want, then tap **Stencil** on the lasso toolbar. The strip reappears armed with that shape's recipe — restyle if you like, then tap the check mark. The degraded ink is deleted and the shape is rendered fresh into the lasso box.
+
+## Style bar glyphs
+
+Four chip groups set the style of the next insert and are remembered across sessions:
+
+- **Weight** — thin, normal, thick: stroke width.
+- **Line** — solid, dashed, dotted: dashes render as separate strokes, so a dashed shape is several elements that redraw together.
+- **Fill** — none, hatch, light, dark: interior fill, drawn as extra strokes.
+- **Look** — clean, hand: constant-width geometry, or a hand-drawn stroke with a pressure-mapped width profile.
+
+## Limitations and deferred work
+
+- Architecture icons family (database, queue, cloud, user) are not in the palette yet.
+- Labels inside shapes are handwriting only; there's no typed text.
+- Redrawing a lasso that holds two Stencil shapes replaces both with one; the plugin only refuses when foreign ink is present.
+- Default sizes and panel width are tuned for a Manta; the code scales by page width but hasn't been tried on a Nomad.
+- Stencil inserts have no native undo (page-element writes clear the undo history); a geometry-API variant without recipes would keep it.
+- Arrows placed before 1.0.0 carry no `flip` in their recipe and redraw left-to-right regardless of how they were drawn.
+- Redraw deletes and re-inserts, so like every Stencil insert it cannot be undone natively.
+
 ## Development
 
-The design, decisions table and reference renderer live in `docs/design-review.html`. `npm run typecheck && npm test && ./buildPlugin.sh` is the gate before every push; `npm run icons` regenerates the PNG icons under `assets/`.
+`npm run typecheck && npm test && ./buildPlugin.sh` is the gate before every push. `npm run icons` regenerates the PNG shape and glyph icons under `assets/` from the real renderer.
 
-The table below records what the spike plugin measured on a Manta. The product code depends on these findings.
+The design, decisions table and reference renderer live in `docs/design-review.html`.
+
+### Layout
+
+- `index.js` registers the sidebar button and the lasso-toolbar button, and bumps `src/session.ts` on every press; `App.tsx` routes the press to a flow.
+- `src/ui/` holds the flows (`PlaceFlow`, `WrapFlow`, `RedrawFlow`, and `LassoFlow` routing between the latter two), the panel, strip, style bar and placement layer.
+- `src/shapes/` and `src/render/` are pure: shape outlines, style, recipe, and the clean and hand-drawn renderers. They never import the SDK.
+- `src/device/` is the only code that talks to `sn-plugin-lib`: page context, inserting a plan tagged with its recipe, reading and replacing a lasso selection, selecting a rect, settings.
+
+### Prior art
+
+Four open-source plugins cover neighbouring ground; their READMEs record device measurements the SDK docs lack.
+
+- [j-raghavan/sn-shapes](https://github.com/j-raghavan/sn-shapes), the "Shapes" plugin: geometry shapes incl. flowchart and arrows, pen-tap or drag placement, free-resize overlay from the lasso toolbar. Every shape is one `GEO_polygon`; arrows are closed polygons.
+- [CharlesCheval/supernote-palette](https://github.com/CharlesCheval/supernote-palette): restyles a lasso selection with width, colour, dashes, hatch and solid fill. Width table, fill-as-lines algorithm, and the note that `reloadFile` can drop recent strokes.
+- [CharlesCheval/supernote-snap](https://github.com/CharlesCheval/supernote-snap): hold-to-snap shapes; solid arrow heads as a zigzag polyline; pen type 16 is the ink pen; lasso paths arrive as pen type 4.
+- [guibor/supernote-shape-snap](https://github.com/guibor/supernote-shape-snap): lasso-to-geometry snapping.
 
 ## Results
 
@@ -54,23 +109,8 @@ Device run of 2026-11-05 on a Manta, firmware current at that date. Observed on 
 | lasso rect, PR 3 device run | integers only | `lassoElements` validates its rect against the SDK's `RectSchema` (`integer: true`) and returns `success: false` for fractional coordinates. Placement boxes are fractional, so `selectRect` rounds outwards. |
 | listFiles, PR 3 device run | objects, not strings | `FileUtils.listFiles` returns `[{ type, path }]` on a Manta although the SDK types it as `string[]`. `makeDir`, `exists` and `deleteDir` in the plugin dir all return `true`. |
 | select only the insert, PR 3 spike | not possible | `showLassoAfterInsert: true` on a geometry inserted through `insertPageElements` selects nothing, before or after `closePluginView` (`getLassoElements` → 904, "No lasso action has been performed"). `lassoElements` only takes a rect, so a placed shape is selected together with anything inside its box. |
+| redraw after native stretch, PR 5 device run | pass | PR #12 merged after D1 and D6: deleteLassoElements removed the stretched ink while the transform was pending, and the live box from generateLassoPreview gave the new size; an arrow placed right-to-left kept its direction through redraw via recipe.flip. |
 
 Design consequence (decided 2026-11-05): tap or drag to place with a transparent full-screen layer, wrap a selection, and a lasso-toolbar "redraw" that regenerates a Stencil shape at the lasso box from a recipe stored in `Element.userData`. Centred insert is dropped.
 
 Consequences for the build: clean look on pen 10, hand-drawn look on pen 16, dashes and hatch as separate strokes, no stroke metadata, inserts through `insertPageElements` (no save and reload), widths in the internal unit with a fractional part.
-
-## Prior art
-
-Four open-source plugins cover neighbouring ground; their READMEs record device measurements the SDK docs lack.
-
-- [j-raghavan/sn-shapes](https://github.com/j-raghavan/sn-shapes), the "Shapes" plugin: geometry shapes incl. flowchart and arrows, pen-tap or drag placement, free-resize overlay from the lasso toolbar. Every shape is one `GEO_polygon`; arrows are closed polygons.
-- [CharlesCheval/supernote-palette](https://github.com/CharlesCheval/supernote-palette): restyles a lasso selection with width, colour, dashes, hatch and solid fill. Width table, fill-as-lines algorithm, and the note that `reloadFile` can drop recent strokes.
-- [CharlesCheval/supernote-snap](https://github.com/CharlesCheval/supernote-snap): hold-to-snap shapes; solid arrow heads as a zigzag polyline; pen type 16 is the ink pen; lasso paths arrive as pen type 4.
-- [guibor/supernote-shape-snap](https://github.com/guibor/supernote-shape-snap): lasso-to-geometry snapping.
-
-## Layout
-
-- `index.js` registers the sidebar button and bumps `src/session.ts` on every press; `App.tsx` routes the press to a flow.
-- `src/ui/` holds the flows (`PlaceFlow`, the placeholder `LassoFlow`), the panel, strip, style bar and placement layer.
-- `src/shapes/` and `src/render/` are pure: shape outlines, style, recipe, and the clean and hand-drawn renderers. They never import the SDK.
-- `src/device/` is the only code that talks to `sn-plugin-lib`: page context, inserting a plan tagged with its recipe, reading and replacing a lasso selection, selecting a rect, settings.
