@@ -2,12 +2,20 @@ import { dashLengths } from '../src/render/dashes';
 import { peakThickness, splitStrokes, toXY } from '../src/render/hand';
 import { renderShape, type Plan } from '../src/render/plan';
 import { DEFAULT_STYLE, FILLS, LINES, LOOKS, WEIGHTS, firmwareWidth, type Style } from '../src/render/style';
-import { SHAPES } from '../src/shapes';
+import { SHAPES, type ShapeDef } from '../src/shapes';
 import { ALL_IDS, defaultBox, inside } from '../test/helpers';
 
 const STYLES: Style[] = LOOKS.flatMap(look =>
   LINES.flatMap(line => FILLS.flatMap(fill => WEIGHTS.map(weight => ({ weight, line, fill, look })))),
 );
+
+/** A bare 2-point open outline, for exercising the dash renderer's degenerate-end
+ * handling directly. `id` only matters for plan.ts's ellipse check, irrelevant here. */
+const OPEN_LINE: ShapeDef = {
+  id: 'arrow', family: 'arrow', label: 'open line (test fixture)', closed: false,
+  defaultSize: { w: 0, h: 0 }, keepAspect: false,
+  outline: box => [[{ x: box.left, y: box.top }, { x: box.right, y: box.bottom }]],
+};
 
 function allPoints(plan: Plan) {
   return [...plan.strokes.flatMap(s => s.points), ...plan.geometries.flatMap(g => g.points)];
@@ -164,7 +172,7 @@ describe('renderShape', () => {
   it('keeps a dot on the open end of a dotted line', () => {
     const { dot } = dashLengths(600);
     // Exactly one gap long: without keepEnd the dot at the far end would be dropped as a corner duplicate.
-    const plan = renderShape(SHAPES.line, { left: 0, top: 0, right: 16, bottom: 0 }, style({ line: 'dotted' }), 1);
+    const plan = renderShape(OPEN_LINE, { left: 0, top: 0, right: 16, bottom: 0 }, style({ line: 'dotted' }), 1);
     expect(dot).toBeLessThan(16);
     expect(plan.strokes).toHaveLength(2);
   });

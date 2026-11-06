@@ -14,7 +14,7 @@ describe('shapes', () => {
       'process', 'decision', 'terminator', 'data', 'document', 'manualInput', 'storedData', 'offPage',
     ]);
     expect(shapesIn('arrow').map(d => d.id)).toEqual([
-      'line', 'arrow', 'doubleArrow', 'elbowArrow', 'curvedArrow', 'arrowDown',
+      'arrow', 'arrowDown', 'doubleArrow', 'elbowArrow', 'curvedArrow', 'curvedArrowDown',
     ]);
   });
 
