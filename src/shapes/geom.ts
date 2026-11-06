@@ -52,7 +52,7 @@ export function ellipse(f: Frame, n: number): Pt[][] {
 
 /** Arrow head: two barbs at ±0.82π from the shaft direction, as an open three-point polyline through the tip. */
 export function head(tip: Pt, angle: number, f: Frame): Pt[] {
-  const len = Math.max(24, 0.09 * Math.max(f.w, f.h));
+  const len = Math.max(24, 0.09 * Math.max(Math.abs(f.w), Math.abs(f.h)));
   const a1 = angle + Math.PI * 0.82;
   const a2 = angle - Math.PI * 0.82;
   return [
