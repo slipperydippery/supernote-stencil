@@ -46,6 +46,15 @@ async function settingsDir(): Promise<string | null> {
   return base ? `${base}/settings` : null;
 }
 
+/**
+ * The SDK types listFiles as string[], but on a Manta it returns
+ * `{ type, path }` objects; accept both.
+ */
+function leafName(entry: unknown): string {
+  const path = typeof entry === 'string' ? entry : String((entry as { path?: unknown } | null)?.path ?? '');
+  return path.replace(/\/+$/, '').split('/').pop() ?? '';
+}
+
 export async function loadSettings(): Promise<Settings> {
   const settings: Settings = { ...DEFAULT_SETTINGS, style: { ...DEFAULT_STYLE } };
   try {
@@ -55,9 +64,9 @@ export async function loadSettings(): Promise<Settings> {
     }
     for (const key of KEYS) {
       try {
-        const entries = (await FileUtils.listFiles(`${dir}/${key}`)) ?? [];
+        const entries: unknown[] = (await FileUtils.listFiles(`${dir}/${key}`)) ?? [];
         if (entries.length > 0) {
-          decode(settings, key, decodeURIComponent(entries[0].replace(/\/+$/, '').split('/').pop() ?? ''));
+          decode(settings, key, decodeURIComponent(leafName(entries[0])));
         }
       } catch (e) {
         console.warn(`loadSettings: ${key} unreadable, using default`, e);

@@ -51,6 +51,8 @@ Device run of 2026-11-05 on a Manta, firmware current at that date. Observed on 
 | 7g geometry via page elements, round 7 | pass | A `GEO_polygon` and a `GEO_ellipse` inserted through `insertPageElements` both render, stretch non-proportionally with the native lasso, and show the "Stencil redraw" toolbar button. Clean shapes stay geometry and carry a recipe. |
 | redraw while selected, round 7 | stale box | After a native stretch, `getLassoRect` still returns the pre-stretch box until the selection is dropped and made again; Palette reports the same and reads the new box from `generateLassoPreview`. Redraw (PR 5) has to take the box from there. |
 | stretch, round 5 | degrades | Native lasso scaling multiplies stroke width with the shape (stroke box lines roughly doubled at 2×). A hand-drawn polygon geometry stretched non-proportionally pulls its bows and corner tails out of proportion. Same finding as sn-shapes ADR-PEN-PLACEMENT. Shapes must be sized at insert time. |
+| lasso rect, PR 3 device run | integers only | `lassoElements` validates its rect against the SDK's `RectSchema` (`integer: true`) and returns `success: false` for fractional coordinates. Placement boxes are fractional, so `selectRect` rounds outwards. |
+| listFiles, PR 3 device run | objects, not strings | `FileUtils.listFiles` returns `[{ type, path }]` on a Manta although the SDK types it as `string[]`. `makeDir`, `exists` and `deleteDir` in the plugin dir all return `true`. |
 
 Design consequence (decided 2026-11-05): tap or drag to place with a transparent full-screen layer, wrap a selection, and a lasso-toolbar "redraw" that regenerates a Stencil shape at the lasso box from a recipe stored in `Element.userData`. Centred insert is dropped.
 

@@ -102,8 +102,11 @@ jest.mock('sn-plugin-lib', () => {
         }
         return Promise.resolve(true);
       }),
+      // What a Manta returns, not the string[] the SDK's type declares.
       listFiles: jest.fn((p: string) =>
-        Promise.resolve([...mockState.dirs].filter(d => d.startsWith(`${p}/`) && !d.slice(p.length + 1).includes('/'))),
+        Promise.resolve(
+          [...mockState.dirs].filter(d => d.startsWith(`${p}/`) && !d.slice(p.length + 1).includes('/')).map(path => ({ type: 0, path })),
+        ),
       ),
     },
   };
@@ -297,11 +300,11 @@ describe('settings', () => {
     expect(await loadSettings()).toEqual({ style: DEFAULT_SETTINGS.style, lastShape: 'circle', tab: 'arrow' });
   });
 
-  it('reads entries listed with a trailing slash', async () => {
+  it('also reads plain path strings, with a trailing slash', async () => {
     const { FileUtils } = require('sn-plugin-lib');
     await saveSettings({ ...DEFAULT_SETTINGS, lastShape: 'circle' });
     const real = FileUtils.listFiles.getMockImplementation();
-    FileUtils.listFiles.mockImplementation((p: string) => real(p).then((l: string[]) => l.map(e => `${e}/`)));
+    FileUtils.listFiles.mockImplementation((p: string) => real(p).then((l: { path: string }[]) => l.map(e => `${e.path}/`)));
     try {
       expect((await loadSettings()).lastShape).toBe('circle');
     } finally {
