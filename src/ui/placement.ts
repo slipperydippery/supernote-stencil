@@ -1,4 +1,5 @@
 import type { PageCtx } from '../device';
+import type { Recipe } from '../render/recipe';
 import type { Box, Pt, ShapeDef, ShapeId } from '../shapes';
 
 /** Smallest side of a dragged closed shape, page px. */
@@ -42,6 +43,28 @@ function atLeast(lo: number, hi: number, min: number): [number, number] {
 /** Arrow-family shapes that read the same whichever way they are drawn. */
 const SYMMETRIC: ReadonlySet<ShapeId> = new Set(['line', 'doubleArrow']);
 
+/** Arrow-family shapes whose outline mirrors with a reversed drag (README contract "style and recipe", `flip`). */
+const DIRECTIONAL: ReadonlySet<ShapeId> = new Set(['arrow', 'arrowDown', 'elbowArrow', 'curvedArrow']);
+
+/**
+ * Set when a directional arrow's drag ran right-to-left or bottom-to-top, so a
+ * later redraw into a normalised lasso box can mirror the outline back.
+ * Non-directional shapes and an unreversed drag both give `undefined`.
+ */
+export function flipFor(def: ShapeDef, dragged: Box): Recipe['flip'] {
+  if (!DIRECTIONAL.has(def.id)) {
+    return undefined;
+  }
+  const flip: { x?: boolean; y?: boolean } = {};
+  if (dragged.left > dragged.right) {
+    flip.x = true;
+  }
+  if (dragged.top > dragged.bottom) {
+    flip.y = true;
+  }
+  return flip.x || flip.y ? flip : undefined;
+}
+
 /**
  * `dragged` runs from pen-down (left, top) to pen-up (right, bottom). Arrows
  * keep the exact swept box, with no minimum side, and directional ones run
@@ -53,8 +76,7 @@ export function fitBox(def: ShapeDef, dragged: Box): Box {
     if (SYMMETRIC.has(def.id)) {
       return normalise(dragged);
     }
-    // The curve runs from its frame's (0, 1) to (1, 0), so its vertical axis is swapped to start at pen-down.
-    return def.id === 'curvedArrow' ? { ...dragged, top: dragged.bottom, bottom: dragged.top } : { ...dragged };
+    return { ...dragged };
   }
   const n = normalise(dragged);
   let { left, top, right, bottom } = n;

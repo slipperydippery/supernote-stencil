@@ -7,7 +7,7 @@ import type { Style } from '../render/style';
 import { SHAPES, type Box, type Family, type ShapeDef } from '../shapes';
 import Message from './Message';
 import Panel from './Panel';
-import { defaultBoxAt, fitBox } from './placement';
+import { defaultBoxAt, fitBox, flipFor } from './placement';
 import PlacementLayer, { type PlaceKind } from './PlacementLayer';
 import Strip from './Strip';
 
@@ -66,7 +66,8 @@ export default function PlaceFlow() {
       const style = latest.current.style;
       const target = kind === 'tap' ? defaultBoxAt(shape, box, ctx) : fitBox(shape, box);
       const seed = Math.floor(Math.random() * 1_000_000);
-      const recipe: Recipe = { v: 1, shape: shape.id, style, seed };
+      const flip = kind === 'drag' ? flipFor(shape, box) : undefined;
+      const recipe: Recipe = { v: 1, shape: shape.id, style, seed, ...(flip ? { flip } : {}) };
       const plan = renderShape(shape, target, style, seed);
       await saving.current;
       const bounds = await insertPlan(ctx, plan, recipe);

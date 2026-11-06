@@ -15,6 +15,22 @@ describe('recipe', () => {
     );
   });
 
+  it('round-trips flip, omitting the key when absent', () => {
+    const withFlip: Recipe = { ...r, flip: { x: true } };
+    expect(parseRecipe(serializeRecipe(withFlip))).toEqual(withFlip);
+    expect(serializeRecipe(r)).not.toContain('flip');
+  });
+
+  it('omits a flip whose axes are all false', () => {
+    expect(serializeRecipe({ ...r, flip: { x: false, y: false } })).not.toContain('flip');
+  });
+
+  it('rejects a malformed flip', () => {
+    const base = '{"v":1,"shape":"line","style":{"weight":"thin","line":"solid","fill":"none","look":"hand"},"seed":1';
+    expect(parseRecipe(`${base},"flip":"yes"}`)).toBeNull();
+    expect(parseRecipe(`${base},"flip":{"x":"yes"}}`)).toBeNull();
+  });
+
   it.each([
     ['empty', ''],
     ['null', null],

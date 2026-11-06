@@ -1,4 +1,4 @@
-import { Element, PluginCommAPI } from 'sn-plugin-lib';
+import { Element, PluginCommAPI, PluginManager } from 'sn-plugin-lib';
 import type { Plan } from '../render/plan';
 import { parseRecipe, serializeRecipe, type Recipe } from '../render/recipe';
 import type { Box } from '../shapes';
@@ -68,21 +68,40 @@ export function insertPlan(ctx: PageCtx, plan: Plan, recipe: Recipe): Promise<Bo
   return insertTagged(ctx, plan, serializeRecipe(recipe));
 }
 
-/** `rect` is the visual lasso box, inflated by half the stroke width; callers shrink it. */
-export async function readLasso(): Promise<{ rect: Box; recipe: Recipe | null; count: number }> {
+/**
+ * `rect` is the visual lasso box, inflated by half the stroke width; callers shrink it.
+ * `liveRect` is the current selection box even while a native stretch is pending (`getLassoRect`
+ * keeps returning the pre-resize box until the selection is dropped and made again); it falls
+ * back to `rect` when `generateLassoPreview` is unavailable or fails.
+ */
+export async function readLasso(): Promise<{ rect: Box; liveRect: Box; recipe: Recipe | null; count: number; recipes: number }> {
   // The cache can hand out stale elements right after a native move or resize.
   PluginCommAPI.clearElementCache();
   const elements = (await call<any[] | null>('getLassoElements', PluginCommAPI.getLassoElements())) ?? [];
   try {
     const rect = await call<Box>('getLassoRect', PluginCommAPI.getLassoRect());
     let recipe: Recipe | null = null;
+    let recipes = 0;
     for (const e of elements) {
-      recipe = parseRecipe(e?.userData);
-      if (recipe) {
-        break;
+      const r = parseRecipe(e?.userData);
+      if (r) {
+        recipes++;
+        if (!recipe) {
+          recipe = r;
+        }
       }
     }
-    return { rect, recipe, count: elements.length };
+    let liveRect = rect;
+    try {
+      const dir = await PluginManager.getPluginDirPath();
+      if (dir) {
+        const preview = await call<{ rect: Box }>('generateLassoPreview', PluginCommAPI.generateLassoPreview(`${dir}/lasso-preview.png`));
+        liveRect = preview.rect;
+      }
+    } catch {
+      // generateLassoPreview unavailable or failed; rect from getLassoRect is the best we have.
+    }
+    return { rect, liveRect, recipe, count: elements.length, recipes };
   } finally {
     elements.forEach(recycle);
   }

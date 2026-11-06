@@ -56,7 +56,7 @@ export const ARROW: ShapeDef[] = [
       const p: Pt[] = [];
       for (let i = 0; i <= 40; i++) {
         const t = i / 40;
-        p.push(at(f, t, 1 - Math.sin((t * Math.PI) / 2)));
+        p.push(at(f, t, Math.sin((t * Math.PI) / 2)));
       }
       const a = Math.atan2(p[40].y - p[39].y, p[40].x - p[39].x);
       return [p, head(p[40], a, f)];
