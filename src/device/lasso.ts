@@ -1,16 +1,23 @@
 import { PluginCommAPI, PluginManager } from 'sn-plugin-lib';
 import type { Box } from '../shapes';
-import { call } from './sdk';
+import { call, recycle } from './sdk';
 
 const PAD = 6;
+
+/** setLassoBoxState: 2 = remove the lasso box, leaving nothing selected. */
+const LASSO_REMOVE = 2;
 
 /**
  * The plugin view must close first: lassoing before the close left nothing
  * selected. No timer between the two: JS timers do not fire while the view is
  * closed, so a sleep here only resumes on the next open. The SDK rejects a
  * rect with fractional coordinates, so it is rounded outwards.
+ *
+ * The firmware can only select by rect (README finding "select only the
+ * insert"). With `only`, the number of elements just inserted, a selection
+ * that also caught existing ink is dropped rather than left to drag it along.
  */
-export async function selectRect(rect: Box): Promise<void> {
+export async function selectRect(rect: Box, only?: number): Promise<void> {
   await PluginManager.closePluginView();
   await call(
     'lassoElements',
@@ -21,6 +28,14 @@ export async function selectRect(rect: Box): Promise<void> {
       bottom: Math.ceil(rect.bottom + PAD),
     }),
   );
+  if (only === undefined) {
+    return;
+  }
+  const selected = (await call<unknown[] | null>('getLassoElements', PluginCommAPI.getLassoElements())) ?? [];
+  selected.forEach(e => recycle(e as { uuid?: string }));
+  if (selected.length > only) {
+    await call('setLassoBoxState', PluginCommAPI.setLassoBoxState(LASSO_REMOVE));
+  }
 }
 
 export async function closeView(): Promise<void> {

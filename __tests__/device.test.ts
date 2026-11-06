@@ -48,6 +48,10 @@ jest.mock('sn-plugin-lib', () => {
         record('getLassoRect');
         return mockOk(mockState.lassoRect);
       }),
+      setLassoBoxState: jest.fn((state: number) => {
+        record(`setLassoBoxState:${state}`);
+        return mockOk(true);
+      }),
       deleteLassoElements: jest.fn(() => {
         record('deleteLassoElements');
         return mockOk(true);
@@ -246,6 +250,18 @@ describe('selectRect', () => {
     await selectRect({ left: 100, top: 200, right: 300, bottom: 400 });
     expect(mockState.log).toEqual(['closePluginView', 'lassoElements']);
     expect(PluginCommAPI.lassoElements).toHaveBeenCalledWith({ left: 94, top: 194, right: 306, bottom: 406 });
+  });
+
+  it('keeps a selection that holds only the inserted elements', async () => {
+    mockState.lassoElements = [{ uuid: 'a' }, { uuid: 'b' }];
+    await selectRect({ left: 100, top: 200, right: 300, bottom: 400 }, 2);
+    expect(mockState.log).toEqual(['closePluginView', 'lassoElements', 'getLassoElements', 'recycle:a', 'recycle:b']);
+  });
+
+  it('drops a selection that also caught existing ink', async () => {
+    mockState.lassoElements = [{ uuid: 'a' }, { uuid: 'b' }, { uuid: 'text' }];
+    await selectRect({ left: 100, top: 200, right: 300, bottom: 400 }, 2);
+    expect(mockState.log).toEqual(['closePluginView', 'lassoElements', 'getLassoElements', 'recycle:a', 'recycle:b', 'recycle:text', 'setLassoBoxState:2']);
   });
 
   it('rounds a fractional rect outwards to whole pixels', async () => {

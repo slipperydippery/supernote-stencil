@@ -113,7 +113,7 @@ it('places on tap at default size centred under the pen, then lassoes as the las
   expect((renderShape as jest.Mock).mock.calls[0][1]).toEqual({ left: 360, top: 680, right: 840, bottom: 920 });
   expect((renderShape as jest.Mock).mock.calls[0][3]).toBe(recipe.seed);
   expect(recipe).toMatchObject({ v: 1, shape: 'rectangle', style: DEFAULT_STYLE });
-  expect(mocked.selectRect).toHaveBeenCalledWith(b);
+  expect(mocked.selectRect).toHaveBeenCalledWith(b, plan.strokes.length + plan.geometries.length);
   expect(device.log[device.log.length - 1]).toBe('selectRect');
   expect(has(r, 'strip-preview')).toBe(false);
 });

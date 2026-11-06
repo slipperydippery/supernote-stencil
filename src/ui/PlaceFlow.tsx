@@ -70,7 +70,7 @@ export default function PlaceFlow() {
       await saving.current;
       const bounds = await insertPlan(ctx, plan, recipe);
       // Closes the view and lassoes; JS stops once the view is closed, so nothing follows this.
-      await selectRect(bounds);
+      await selectRect(bounds, plan.strokes.length + plan.geometries.length);
     } catch (e) {
       busy.current = false;
       fail(e);
