@@ -1,11 +1,8 @@
 import { FileUtils, PluginManager } from 'sn-plugin-lib';
-import type { Family, ShapeId, Style } from './contracts';
-import { FAMILY_IDS, isStyle, SHAPE_IDS } from './recipe';
+import { DEFAULT_STYLE, isStyle, type Style } from '../render/style';
+import { FAMILIES, SHAPES, type Family, type ShapeId } from '../shapes';
 
 export type Settings = { style: Style; lastShape: ShapeId | null; tab: Family };
-
-// Local copy of PR 1's DEFAULT_STYLE until PR 3 imports `src/render/style`.
-const DEFAULT_STYLE: Style = { weight: 'normal', line: 'solid', fill: 'none', look: 'clean' };
 
 export const DEFAULT_SETTINGS: Settings = { style: DEFAULT_STYLE, lastShape: null, tab: 'basic' };
 
@@ -34,10 +31,10 @@ function decode(out: Settings, key: Key, raw: string): void {
       return;
     }
     case 'lastShape':
-      out.lastShape = SHAPE_IDS.includes(raw as ShapeId) ? (raw as ShapeId) : null;
+      out.lastShape = Object.prototype.hasOwnProperty.call(SHAPES, raw) ? (raw as ShapeId) : null;
       return;
     case 'tab':
-      out.tab = FAMILY_IDS.includes(raw as Family) ? (raw as Family) : DEFAULT_SETTINGS.tab;
+      out.tab = FAMILIES.includes(raw as Family) ? (raw as Family) : DEFAULT_SETTINGS.tab;
       return;
   }
 }

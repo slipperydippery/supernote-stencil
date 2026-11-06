@@ -1,4 +1,5 @@
-import type { Plan, Recipe } from '../src/device/contracts';
+import type { Plan } from '../src/render/plan';
+import type { Recipe } from '../src/render/recipe';
 
 type Fake = {
   log: string[];

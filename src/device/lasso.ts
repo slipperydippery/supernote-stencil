@@ -1,5 +1,5 @@
 import { PluginCommAPI, PluginManager } from 'sn-plugin-lib';
-import type { Box } from './contracts';
+import type { Box } from '../shapes';
 import { call } from './sdk';
 
 const PAD = 6;
@@ -15,4 +15,8 @@ export async function selectRect(rect: Box): Promise<void> {
     'lassoElements',
     PluginCommAPI.lassoElements({ left: rect.left - PAD, top: rect.top - PAD, right: rect.right + PAD, bottom: rect.bottom + PAD }),
   );
+}
+
+export async function closeView(): Promise<void> {
+  await PluginManager.closePluginView();
 }
