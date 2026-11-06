@@ -22,6 +22,10 @@ export function deviceMock() {
       device.log.push('insertPlan');
       return Promise.resolve(plan.bounds);
     }),
+    replaceLasso: jest.fn((_ctx: unknown, plan: { bounds: unknown }) => {
+      device.log.push('replaceLasso');
+      return Promise.resolve(plan.bounds);
+    }),
     selectRect: jest.fn(() => {
       device.log.push('selectRect');
       return Promise.resolve();
@@ -31,7 +35,13 @@ export function deviceMock() {
       return Promise.resolve();
     }),
     readLasso: jest.fn(() =>
-      Promise.resolve({ rect: { left: 0, top: 0, right: 0, bottom: 0 }, recipe: null as Recipe | null, count: 3 }),
+      Promise.resolve({
+        rect: { left: 0, top: 0, right: 0, bottom: 0 },
+        liveRect: { left: 0, top: 0, right: 0, bottom: 0 },
+        recipe: null as Recipe | null,
+        count: 3,
+        recipes: 0,
+      }),
     ),
   };
 }

@@ -6,6 +6,8 @@ type Fake = {
   created: any[];
   lassoElements: any[];
   lassoRect: { left: number; top: number; right: number; bottom: number };
+  lassoPreviewRect: { left: number; top: number; right: number; bottom: number };
+  lassoPreviewFails: boolean;
   insertFails: boolean;
   dirs: Set<string>;
 };
@@ -47,6 +49,13 @@ jest.mock('sn-plugin-lib', () => {
       getLassoRect: jest.fn(() => {
         record('getLassoRect');
         return mockOk(mockState.lassoRect);
+      }),
+      generateLassoPreview: jest.fn((imagePath: string) => {
+        record('generateLassoPreview');
+        if (mockState.lassoPreviewFails) {
+          return Promise.resolve({ success: false, result: null, error: { code: 1, message: 'boom' } });
+        }
+        return mockOk({ imagePath, rect: mockState.lassoPreviewRect, rotateDegree: 0 });
       }),
       setLassoBoxState: jest.fn((state: number) => {
         record(`setLassoBoxState:${state}`);
@@ -151,6 +160,8 @@ beforeEach(() => {
     created: [],
     lassoElements: [],
     lassoRect: { left: 100, top: 200, right: 300, bottom: 400 },
+    lassoPreviewRect: { left: 100, top: 200, right: 300, bottom: 400 },
+    lassoPreviewFails: false,
     insertFails: false,
     dirs: new Set(),
   };
@@ -214,13 +225,13 @@ describe('insertPlan', () => {
 });
 
 describe('readLasso', () => {
-  it('returns the first valid recipe, the count and the lasso rect', async () => {
+  it('returns the first valid recipe, the count, the recipe count, and both rects', async () => {
     mockState.lassoElements = [
       { uuid: 'a', userData: '' },
       { uuid: 'b', userData: tag },
     ];
     const res = await readLasso();
-    expect(res).toEqual({ rect: mockState.lassoRect, recipe, count: 2 });
+    expect(res).toEqual({ rect: mockState.lassoRect, liveRect: mockState.lassoPreviewRect, recipe, count: 2, recipes: 1 });
     expect(mockState.log[0]).toBe('clearElementCache');
     expect(mockState.log).toEqual(expect.arrayContaining(['recycle:a', 'recycle:b']));
   });
@@ -234,6 +245,34 @@ describe('readLasso', () => {
     const res = await readLasso();
     expect(res.recipe).toBeNull();
     expect(res.count).toBe(3);
+    expect(res.recipes).toBe(0);
+  });
+
+  it('counts every tagged element, not just the first', async () => {
+    mockState.lassoElements = [
+      { uuid: 'a', userData: tag },
+      { uuid: 'b', userData: tag },
+      { uuid: 'c', userData: tag },
+      { uuid: 'd', userData: '' },
+    ];
+    const res = await readLasso();
+    expect(res.count).toBe(4);
+    expect(res.recipes).toBe(3);
+    expect(res.recipe).toEqual(recipe);
+  });
+
+  it('returns the preview rect as liveRect, distinct from getLassoRect', async () => {
+    mockState.lassoRect = { left: 0, top: 0, right: 100, bottom: 100 };
+    mockState.lassoPreviewRect = { left: 0, top: 0, right: 150, bottom: 100 };
+    const res = await readLasso();
+    expect(res.rect).toEqual({ left: 0, top: 0, right: 100, bottom: 100 });
+    expect(res.liveRect).toEqual({ left: 0, top: 0, right: 150, bottom: 100 });
+  });
+
+  it('falls back to rect when generateLassoPreview fails', async () => {
+    mockState.lassoPreviewFails = true;
+    const res = await readLasso();
+    expect(res.liveRect).toEqual(res.rect);
   });
 });
 

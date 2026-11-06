@@ -4,9 +4,10 @@ import { closeView, readLasso } from '../device';
 import type { Recipe } from '../render/recipe';
 import type { Box } from '../shapes';
 import Message from './Message';
+import RedrawFlow from './RedrawFlow';
 import WrapFlow from './WrapFlow';
 
-type Selection = { rect: Box; recipe: Recipe | null; count: number };
+type Selection = { rect: Box; liveRect: Box; recipe: Recipe | null; count: number; recipes: number };
 
 /** Reads the lasso once on mount, before any UI; reading again after the user interacts risks stale data. */
 export default function LassoFlow() {
@@ -32,10 +33,9 @@ export default function LassoFlow() {
     return <View style={styles.root} />;
   }
   if (sel.recipe) {
-    // PR 5 replaces this branch with the redraw flow.
     return (
       <View style={styles.root}>
-        <Message text="Redraw comes in the next release" onClose={close} />
+        <RedrawFlow selection={{ rect: sel.rect, liveRect: sel.liveRect, recipe: sel.recipe, count: sel.count, recipes: sel.recipes }} />
       </View>
     );
   }

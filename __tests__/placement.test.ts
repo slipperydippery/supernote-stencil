@@ -1,7 +1,7 @@
 import { renderShape } from '../src/render/plan';
 import { DEFAULT_STYLE } from '../src/render/style';
 import { SHAPES } from '../src/shapes';
-import { defaultBoxAt, fitBox, MIN_SIDE, toPagePx } from '../src/ui/placement';
+import { defaultBoxAt, fitBox, flipFor, MIN_SIDE, toPagePx } from '../src/ui/placement';
 
 const ctx = { notePath: '/n', page: 0, width: 1920, height: 2560, unit: 1 };
 const point = (x: number, y: number) => ({ left: x, top: y, right: x, bottom: y });
@@ -75,5 +75,28 @@ describe('fitBox', () => {
     const head = plan.geometries[1];
     expect(head.points.every(p => p.y >= 300)).toBe(true);
     expect(plan.bounds.top).toBe(300);
+  });
+});
+
+describe('flipFor', () => {
+  it('records flip.x for a right-to-left drag of a directional arrow', () => {
+    expect(flipFor(SHAPES.arrow, { left: 800, top: 300, right: 200, bottom: 300 })).toEqual({ x: true });
+  });
+
+  it('records no flip for a non-directional shape dragged the same way', () => {
+    expect(flipFor(SHAPES.rectangle, { left: 800, top: 300, right: 200, bottom: 300 })).toBeUndefined();
+  });
+
+  it('records no flip for an unreversed drag', () => {
+    expect(flipFor(SHAPES.arrow, { left: 200, top: 300, right: 800, bottom: 300 })).toBeUndefined();
+  });
+
+  it('records both axes when both are reversed', () => {
+    expect(flipFor(SHAPES.elbowArrow, { left: 800, top: 600, right: 200, bottom: 300 })).toEqual({ x: true, y: true });
+  });
+
+  it('treats line and doubleArrow as non-directional: no flip even when reversed', () => {
+    expect(flipFor(SHAPES.line, { left: 800, top: 300, right: 200, bottom: 300 })).toBeUndefined();
+    expect(flipFor(SHAPES.doubleArrow, { left: 800, top: 300, right: 200, bottom: 300 })).toBeUndefined();
   });
 });
