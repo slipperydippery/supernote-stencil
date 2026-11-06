@@ -83,7 +83,7 @@ export default function PlaceFlow() {
 
   return (
     <View style={styles.root}>
-      <PlacementLayer enabled={mode === 'strip'} scale={PixelRatio.get()} onPlace={place} />
+      <PlacementLayer enabled={mode === 'strip'} shape={shape} scale={PixelRatio.get()} onPlace={place} />
       {mode === 'panel' && (
         <Panel
           tab={settings.tab}

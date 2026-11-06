@@ -1,5 +1,5 @@
 import React from 'react';
-import { PixelRatio } from 'react-native';
+import { PixelRatio, View } from 'react-native';
 import { act, create, type ReactTestRenderer } from 'react-test-renderer';
 import { device, deviceMock } from '../test/device-mock';
 
@@ -130,16 +130,33 @@ it('renders a drag into the swept box', async () => {
   expect((renderShape as jest.Mock).mock.calls[1][1]).toEqual({ left: 350, top: 200, right: 650, bottom: 500 });
 });
 
-it('shows a solid rubber band while dragging', async () => {
-  device.settings = { ...device.settings, lastShape: 'rectangle' };
+async function dragPreview(shape: string, from: [number, number], to: [number, number]) {
+  device.settings = { ...device.settings, lastShape: shape as any };
   const r = await open();
   await act(async () => {
-    layer(r).props.onResponderGrant(ev(100, 100));
-    layer(r).props.onResponderMove(ev(300, 200));
+    layer(r).props.onResponderGrant(ev(...from));
+    layer(r).props.onResponderMove(ev(...to));
   });
-  const band = r.root.findAllByProps({ testID: 'rubber-band' })[0];
-  const style = Object.assign({}, ...[band.props.style].flat(Infinity));
-  expect(style).toMatchObject({ left: 100, top: 100, width: 200, height: 100, borderStyle: 'solid' });
+  const band = r.root.findAllByProps({ testID: 'rubber-band' }).find(n => typeof n.type !== 'string')!;
+  // Segment centres in dp.
+  return band.findAll(n => n.type === View && n.props.style && !n.props.testID).map(n => {
+    const st = Object.assign({}, ...[n.props.style].flat(Infinity));
+    return { x: st.left + (st.width - 2) / 2, y: st.top + 1 };
+  });
+}
+
+it('previews the armed shape in the box it will be rendered into while dragging', async () => {
+  // Square: a dp drag (100, 100)–(400, 250) fits to page (350, 200)–(650, 500), dp (175, 100)–(325, 250).
+  const square = await dragPreview('square', [100, 100], [400, 250]);
+  expect(square).toHaveLength(4);
+  for (const c of square) {
+    const onEdge = [175, 325].some(x => Math.abs(c.x - x) < 1e-6) || [100, 250].some(y => Math.abs(c.y - y) < 1e-6);
+    expect(onEdge).toBe(true);
+  }
+  // Diamond: no segment centre lies on the swept box's edges.
+  const diamond = await dragPreview('diamond', [100, 100], [400, 250]);
+  expect(diamond).toHaveLength(4);
+  expect(diamond.every(c => c.x > 100 && c.x < 400 && c.y > 100 && c.y < 250)).toBe(true);
 });
 
 it('treats a small drag as a tap', async () => {
