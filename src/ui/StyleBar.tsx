@@ -39,7 +39,7 @@ export default function StyleBar({ style, onStyle, size }: Props) {
     return (
       <View style={styles.rows}>
         {PANEL_ROWS.map((row, i) => (
-          <View key={i} testID={`stylebar-row-${i}`} style={styles.bar}>
+          <View key={i} testID={`stylebar-row-${i}`} style={styles.panelBar}>
             {row.map(renderGroup)}
           </View>
         ))}
@@ -56,6 +56,8 @@ export default function StyleBar({ style, onStyle, size }: Props) {
 const styles = StyleSheet.create({
   rows: { gap: 6 },
   bar: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: 10, rowGap: 6 },
+  // Two groups only, so no wrap needed; centered as one cluster with a wider gap, instead of hugging the left edge.
+  panelBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', columnGap: 24 },
   group: { flexDirection: 'row', gap: 3 },
   chip: { padding: 2, borderWidth: 1, borderColor: RULE, borderRadius: 3, backgroundColor: PAPER },
   chipOn: { borderWidth: 2, borderColor: INK, padding: 1 },

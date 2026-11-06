@@ -15,7 +15,8 @@ export const STRIP_TOP = 16;
 export const CELL_GAP = 8;
 
 export const CHIP = {
-  panel: { w: 24, h: 19 },
+  /** Sized up from 24×19: splitting the style bar into two rows freed width the chips now spend on legibility. */
+  panel: { w: 34, h: 27 },
   strip: { w: 32, h: 24 },
 } as const;
 export type ChipSize = keyof typeof CHIP;
