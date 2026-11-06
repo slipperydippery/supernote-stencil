@@ -59,6 +59,6 @@ describe('shapes', () => {
     expect(SHAPES.circle.outline(box)[0]).toHaveLength(73);
     expect(SHAPES.ellipse.outline(box)[0]).toHaveLength(81);
     expect(SHAPES.rounded.outline(box)[0]).toHaveLength(4 * 11 + 1);
-    expect(SHAPES.storedData.outline(box)[0]).toHaveLength(2 * 21 + 2);
+    expect(SHAPES.storedData.outline(box)[0]).toHaveLength(2 * 21 + 1);
   });
 });

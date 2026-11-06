@@ -63,7 +63,6 @@ export const FLOW: ShapeDef[] = [
       const ry = f.h / 2;
       const p: Pt[] = [
         ...arc(f.x + r, cy, r, ry, Math.PI / 2, 1.5 * Math.PI, 20),
-        { x: f.x + f.w, y: f.y },
         ...arc(f.x + f.w, cy, r, ry, 1.5 * Math.PI, Math.PI / 2, 20),
       ];
       p.push(p[0]);

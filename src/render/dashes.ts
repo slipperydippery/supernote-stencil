@@ -47,15 +47,24 @@ export function pieces<T extends P>(samples: T[], on: number, off: number): T[][
   return out;
 }
 
-/** Dots every `gap` px along the polyline, each a two-point stroke 1 px long in the direction of travel. */
-export function dots<T extends P>(samples: T[], gap: number): T[][] {
+/**
+ * Dots every `gap` px along the polyline, each a two-point stroke 1 px long in
+ * the direction of travel. Without `keepEnd`, a dot within half a gap of the
+ * end is dropped: the next run starts with a dot on that same corner.
+ */
+export function dots<T extends P>(samples: T[], gap: number, keepEnd = false): T[][] {
   const out: T[][] = [];
+  const s = [0];
+  for (let i = 1; i < samples.length; i++) {
+    s.push(s[i - 1] + Math.hypot(samples[i].x - samples[i - 1].x, samples[i].y - samples[i - 1].y));
+  }
+  const total = s[s.length - 1];
   let acc = gap;
   for (let i = 0; i < samples.length; i++) {
     if (i > 0) {
-      acc += Math.hypot(samples[i].x - samples[i - 1].x, samples[i].y - samples[i - 1].y);
+      acc += s[i] - s[i - 1];
     }
-    if (acc < gap) {
+    if (acc < gap || (!keepEnd && i > 0 && total - s[i] < gap / 2)) {
       continue;
     }
     acc = 0;
@@ -74,14 +83,14 @@ export function dots<T extends P>(samples: T[], gap: number): T[][] {
   return out;
 }
 
-/** Dash or dot pieces for a sampled polyline; solid returns it whole. */
-export function dashSamples<T extends P>(samples: T[], line: Line, width: number): T[][] {
+/** Dash or dot pieces for a sampled polyline; solid returns it whole. `keepEnd` keeps a final dot on an open end. */
+export function dashSamples<T extends P>(samples: T[], line: Line, width: number, keepEnd = false): T[][] {
   const d = dashLengths(width);
   if (line === 'dashed') {
     return pieces(samples, d.on, d.off);
   }
   if (line === 'dotted') {
-    return dots(samples, d.dot);
+    return dots(samples, d.dot, keepEnd);
   }
   return [samples];
 }

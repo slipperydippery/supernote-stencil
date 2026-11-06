@@ -148,6 +148,38 @@ describe('renderShape', () => {
     }
   });
 
+  it.each(['clean', 'hand'] as const)('never doubles a dot on a %s rectangle corner', look => {
+    // 300 px sides are an exact multiple of the 15.6 px dot gap only by accident; check every pair.
+    for (const w of [300, 312, 468]) {
+      const plan = renderShape(SHAPES.rectangle, { left: 0, top: 0, right: w, bottom: 156 }, style({ line: 'dotted', look }), 2);
+      const pts = plan.strokes.map(s => s.points[0]);
+      for (let i = 0; i < pts.length; i++) {
+        for (let j = i + 1; j < pts.length; j++) {
+          expect(Math.hypot(pts[i].x - pts[j].x, pts[i].y - pts[j].y)).toBeGreaterThan(4);
+        }
+      }
+    }
+  });
+
+  it('keeps a dot on the open end of a dotted line', () => {
+    const { dot } = dashLengths(600);
+    // Exactly one gap long: without keepEnd the dot at the far end would be dropped as a corner duplicate.
+    const plan = renderShape(SHAPES.line, { left: 0, top: 0, right: 16, bottom: 0 }, style({ line: 'dotted' }), 1);
+    expect(dot).toBeLessThan(16);
+    expect(plan.strokes).toHaveLength(2);
+  });
+
+  it('gives each arrow head its own random sequence', () => {
+    const def = SHAPES.doubleArrow;
+    const plan = renderShape(def, defaultBox(def), style({ look: 'hand' }), 4);
+    const [, right, left] = def.outline(defaultBox(def));
+    const offsets = (head: { x: number; y: number }[]) =>
+      plan.strokes
+        .find(s => Math.abs(s.points[Math.floor(s.points.length / 2)].x - head[1].x) < 30)!
+        .pressures.slice(0, 5);
+    expect(offsets(right)).not.toEqual(offsets(left));
+  });
+
   it.each(['light', 'dark', 'hatch'] as const)('clips the %s fill to the diamond and draws it first', fill => {
     const def = SHAPES.diamond;
     const plan = renderShape(def, defaultBox(def), style({ fill }), 1);

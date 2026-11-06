@@ -21,6 +21,16 @@ const PRESSURE = 2000;
 const STEP = 4;
 const ELLIPSES: ReadonlySet<ShapeId> = new Set(['circle', 'ellipse']);
 
+/**
+ * Seed for one part of a shape (part 0 = first outline, 1.. = arrow heads,
+ * FILL_PART = fill), so parts do not repeat each other's random sequence.
+ * Part 0 keeps the recipe seed, matching the spike.
+ */
+const FILL_PART = 101;
+function partSeed(seed: number, part: number): number {
+  return seed + part * 1013;
+}
+
 function geo(type: GeoSpec['type'], points: Pt[], width: number): GeoSpec {
   return {
     type, points,
@@ -51,12 +61,14 @@ function cleanDashed(def: ShapeDef, outlines: Pt[][], style: Style, width: numbe
   const out: StrokeSpec[] = [];
   for (const outline of outlines) {
     // Split at corners first so no dash bends around one.
-    for (const run of splitStrokes(toXY(outline), def.closed)) {
+    const runs = splitStrokes(toXY(outline), def.closed);
+    runs.forEach((run, i) => {
       const samples = resample(run, STEP).map(([x, y]) => ({ x, y }));
-      for (const piece of dashSamples(samples, style.line, width)) {
+      const openEnd = !def.closed && i === runs.length - 1;
+      for (const piece of dashSamples(samples, style.line, width, openEnd)) {
         out.push({ points: piece, pressures: piece.map(() => PRESSURE), penType: 10, penColor: 0, thickness: firmwareWidth(width) });
       }
-    }
+    });
   }
   return out;
 }
@@ -65,9 +77,11 @@ function handStrokes(def: ShapeDef, outlines: Pt[][], style: Style, width: numbe
   const peak = peakThickness(width, LOCKED.swing);
   const penLen = ELLIPSES.has(def.id) ? Infinity : LOCKED.penLen;
   const out: StrokeSpec[] = [];
-  for (const outline of outlines) {
-    for (const pen of handDrawnOutline(toXY(outline), def.closed, seed, width, penLen)) {
-      for (const s of dashSamples(pen, style.line, width)) {
+  outlines.forEach((outline, i) => {
+    const pens = handDrawnOutline(toXY(outline), def.closed, partSeed(seed, i), width, penLen);
+    pens.forEach((pen, j) => {
+      const openEnd = !def.closed && j === pens.length - 1;
+      for (const s of dashSamples(pen, style.line, width, openEnd)) {
         out.push({
           points: s.map(p => ({ x: p.x, y: p.y })),
           pressures: s.map(p => pressureFromWidth(p.w, peak)),
@@ -76,8 +90,8 @@ function handStrokes(def: ShapeDef, outlines: Pt[][], style: Style, width: numbe
           thickness: firmwareWidth(peak),
         });
       }
-    }
-  }
+    });
+  });
   return out;
 }
 
@@ -105,7 +119,7 @@ export function renderShape(def: ShapeDef, box: Box, style: Style, seed: number)
   const geometries: GeoSpec[] = [];
 
   if (def.closed && style.fill !== 'none') {
-    strokes.push(...fillStrokes(outlines[0], style, width, seed));
+    strokes.push(...fillStrokes(outlines[0], style, width, partSeed(seed, FILL_PART)));
   }
   if (style.look === 'clean') {
     if (style.line === 'solid') {

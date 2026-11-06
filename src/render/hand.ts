@@ -8,9 +8,7 @@
  * where it meets another stroke. Width is later mapped to pen pressure.
  */
 import type { Pt } from '../shapes/types';
-import { mulberry32, seeded } from './rng';
-
-export { mulberry32 };
+import { seeded } from './rng';
 
 /** Points as tuples; the renderers convert from and to `Pt` at the edges. */
 export type XY = [number, number];

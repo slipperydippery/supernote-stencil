@@ -111,7 +111,7 @@ const GLYPHS: Record<string, Draw> = {
   'fill-none': square(null),
   'fill-hatch': square(null, true),
   'fill-light': square('#c9c9c9'),
-  'fill-dark': square('#8a8a8a'),
+  'fill-dark': square('#9d9d9d'),
   'look-clean': line('M3 9 L19 5', 1.8),
   'look-hand': line('M3 9 C7 3, 10 11, 14 6 S18 4, 19 6', 1.8),
 };
