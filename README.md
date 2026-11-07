@@ -60,7 +60,7 @@ Five chip groups set the style of the next insert and are remembered across sess
 
 - Architecture icons family (database, queue, cloud, user) are not in the palette yet.
 - Labels inside shapes are handwriting only; there's no typed text.
-- Redrawing a lasso that holds two Stencil shapes replaces both with one; the plugin only refuses when foreign ink is present.
+- Redraw takes one Stencil shape at a time; a selection holding two is refused.
 - Default sizes and panel width are tuned for a Manta; the code scales by page width but hasn't been tried on a Nomad.
 - Stencil inserts have no native undo (page-element writes clear the undo history); a geometry-API variant without recipes would keep it.
 - Arrows placed before 1.0.0 carry no `flip` in their recipe and redraw left-to-right regardless of how they were drawn.
