@@ -44,7 +44,7 @@ function atLeast(lo: number, hi: number, min: number): [number, number] {
 const SYMMETRIC: ReadonlySet<ShapeId> = new Set(['doubleArrow']);
 
 /** Arrow-family shapes whose outline mirrors with a reversed drag (README contract "style and recipe", `flip`). */
-const DIRECTIONAL: ReadonlySet<ShapeId> = new Set(['arrow', 'arrowDown', 'elbowArrow', 'curvedArrow', 'curvedArrowDown']);
+const DIRECTIONAL: ReadonlySet<ShapeId> = new Set(['arrow', 'arrowDown', 'elbowArrow', 'archArrow', 'scoopArrow']);
 
 /**
  * Set when a directional arrow's drag ran right-to-left or bottom-to-top, so a

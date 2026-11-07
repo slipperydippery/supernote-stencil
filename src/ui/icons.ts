@@ -25,8 +25,8 @@ export const ICONS: Record<ShapeId, ImageSourcePropType> = {
   arrowDown: require('../../assets/shapes/arrowDown.png'),
   doubleArrow: require('../../assets/shapes/doubleArrow.png'),
   elbowArrow: require('../../assets/shapes/elbowArrow.png'),
-  curvedArrow: require('../../assets/shapes/curvedArrow.png'),
-  curvedArrowDown: require('../../assets/shapes/curvedArrowDown.png'),
+  archArrow: require('../../assets/shapes/archArrow.png'),
+  scoopArrow: require('../../assets/shapes/scoopArrow.png'),
 };
 
 export type GlyphKey = { [K in keyof Style]: `${K}-${Style[K]}` }[keyof Style];

@@ -2,7 +2,7 @@ export type Family = 'basic' | 'flow' | 'arrow';
 export type ShapeId =
   | 'rectangle' | 'rounded' | 'square' | 'circle' | 'ellipse' | 'triangle' | 'diamond' | 'hexagon'
   | 'process' | 'decision' | 'terminator' | 'data' | 'document' | 'manualInput' | 'storedData' | 'offPage'
-  | 'arrow' | 'arrowDown' | 'doubleArrow' | 'elbowArrow' | 'curvedArrow' | 'curvedArrowDown';
+  | 'arrow' | 'arrowDown' | 'doubleArrow' | 'elbowArrow' | 'archArrow' | 'scoopArrow';
 export type Pt = { x: number; y: number };
 export type Box = { left: number; top: number; right: number; bottom: number };
 export type ShapeDef = {
