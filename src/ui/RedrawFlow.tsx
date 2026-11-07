@@ -16,21 +16,18 @@ type Selection = LassoSelection & { recipe: Recipe };
 const noop = () => {};
 
 /**
- * Other elements in the selection are left alone, but only while nothing is pending: whether lasso
- * points are read before or after a native move or stretch is unmeasured.
+ * The shape's own elements are replaced apart from the selection only while nothing is pending:
+ * whether lasso points are read before or after a native move or stretch is unmeasured.
  */
 function refuse(sel: Selection): string | null {
   if (sel.shapes > 1) {
     return `${sel.shapes} Stencil shapes selected: select one to redraw`;
   }
-  if (sel.recipes === sel.count) {
-    return null;
+  if (sel.own) {
+    return moved(sel.rect, sel.liveRect) ? 'To move or stretch, lasso the whole Stencil shape on its own' : null;
   }
-  if (!sel.own) {
+  if (sel.recipes !== sel.count) {
     return 'Select only the Stencil shape to redraw';
-  }
-  if (moved(sel.rect, sel.liveRect)) {
-    return 'Move or stretch the Stencil shape on its own to redraw it';
   }
   return null;
 }
