@@ -1,10 +1,12 @@
 # Changelog
 
-## Unreleased
+## 1.1.0 — 2026-11-07
 
 - Fill tone: fill is none, solid, hatch or cross, and a new tone group (light, dark, black) sets the grey of a solid fill and the spacing of hatch lines. Spacing is a constant per tone instead of a share of the box height, so one style reads the same on every size. Saved styles and recipes from 1.0.0 are upgraded on read; an old hatch redraws at black, the spacing closest to what it had (GH-20).
 
 - Settings: a Settings button in the shape panel opens a screen with hatch spacing per tone (1–66 % ink coverage in 1 % steps, default 4 / 11 / 21 %) and wrap padding (0–8 mm, default 2 mm). A hatched shape keeps the spacing it was placed with on redraw until its tone changes (GH-22).
+
+- Strip: the arm-on-open toggle is a pin instead of a check box, so it no longer reads as OK next to the close button (GH-28).
 
 ## 1.0.0 — 2026-11-06
 
