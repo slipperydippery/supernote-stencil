@@ -160,7 +160,7 @@ ul{padding-left:20px}li{margin:6px 0;max-width:70ch}
     <tr class="changed"><td>Resize</td><td>Never scale, redraw from recipe</td><td>Every Stencil element carries shape id, style and seed in <code>userData</code>. Lasso, pull the native handle, tap Stencil: the strip appears armed with that recipe, restyle if wanted, tap apply, and the selection is rendered fresh into the lasso box. Clean shapes go in as geometry page elements so they carry a recipe too, at the cost of native undo.</td></tr>
     <tr><td>Palette layout</td><td>Family tabs</td><td>E-ink scrolls badly, so each family gets one panel of cells. The tab is remembered between opens.</td></tr>
     <tr><td>Style bar</td><td>Glyphs, four groups</td><td>Weight 3, line 3, fill 4, look 2. Applies to the next insert, remembered across sessions.</td></tr>
-    <tr class="changed"><td>Hand-drawn look</td><td>One bow per stroke, width profile, overshoot</td><td>Constants locked at bow 2, swing 0.4, overshoot 3 in preview units. On device the stroke thickness is set to the profile's peak and pressure is mapped through the measured curve, so a hand-drawn shape reads as dark as its clean twin.</td></tr>
+    <tr class="changed"><td>Hand-drawn look</td><td>One bow per stroke, width profile, overshoot</td><td>One stroke per run between sharp corners, however long, as a confident hand draws it. Constants locked at bow 2, swing 0.4, overshoot 3 in preview units. On device the stroke thickness is set to the profile's peak and pressure is mapped through the measured curve, so a hand-drawn shape reads as dark as its clean twin.</td></tr>
     <tr class="changed"><td>Dashes and hatch</td><td>Separate strokes</td><td>Neither the pen-up flag nor zero pressure makes a gap inside one stroke. A dashed box is about forty elements; redraw keeps them one shape.</td></tr>
     <tr><td>Wrap</td><td>Same lasso button, expanded panel</td><td>Lasso handwriting, tap Stencil: the panel opens expanded and tapping a shape wraps the selection at once. Position and size are known, so no strip and no page tap.</td></tr>
     <tr><td>Families v1</td><td>Basic, Flowchart, Arrows</td><td>Architecture icons deferred. Arrows are dumb: drag sets their length and direction. Heads are solid black whatever the fill. A tap places the arch and scoop arrows rising, bottom-left to top-right.</td></tr>
@@ -296,8 +296,8 @@ ul{padding-left:20px}li{margin:6px 0;max-width:70ch}
       {id:'rect',name:'rectangle',size:'480 × 240',closed:true,lines:()=>rect(M,M+10,W-2*M,H-2*M-20)},
       {id:'rrect',name:'rounded',size:'480 × 240',closed:true,lines:()=>rrect(M,M+10,W-2*M,H-2*M-20,16)},
       {id:'square',name:'square',size:'300 × 300',closed:true,lines:()=>rect(W/2-46,H/2-46,92,92)},
-      {id:'circle',name:'circle',size:'300 × 300',closed:true,penLen:1e9,lines:()=>[arc(W/2,H/2,46,46,-Math.PI/2,1.5*Math.PI,72)]},
-      {id:'ellipse',name:'ellipse',size:'480 × 240',closed:true,penLen:1e9,lines:()=>[arc(W/2,H/2,86,44,-Math.PI/2,1.5*Math.PI,80)]},
+      {id:'circle',name:'circle',size:'300 × 300',closed:true,lines:()=>[arc(W/2,H/2,46,46,-Math.PI/2,1.5*Math.PI,72)]},
+      {id:'ellipse',name:'ellipse',size:'480 × 240',closed:true,lines:()=>[arc(W/2,H/2,86,44,-Math.PI/2,1.5*Math.PI,80)]},
       {id:'tri',name:'triangle',size:'360 × 300',closed:true,lines:()=>poly([[W/2,M],[W-M-30,H-M],[M+30,H-M]])},
       {id:'diamond',name:'diamond',size:'480 × 300',closed:true,lines:()=>poly([[W/2,M],[W-M,H/2],[W/2,H-M],[M,H/2]])},
       {id:'hex',name:'hexagon',size:'480 × 300',closed:true,lines:()=>poly([[M+30,M+6],[W-M-30,M+6],[W-M,H/2],[W-M-30,H-M-6],[M+30,H-M-6],[M,H/2]])},
@@ -336,12 +336,6 @@ ul{padding-left:20px}li{margin:6px 0;max-width:70ch}
     return strokes;
   }
   // a hand draws a long smooth outline in several pen strokes; split by arc length
-  function splitLong(stroke,maxLen){
-    const s=cum(stroke),L=s[s.length-1];const n=Math.ceil(L/maxLen);if(n<2)return [stroke];
-    const out=[];let piece=[stroke[0]],k=1;
-    for(let i=1;i<stroke.length;i++){piece.push(stroke[i]);if(s[i]>=L*k/n&&k<n){out.push(piece);piece=[stroke[i]];k++}}
-    if(piece.length>1)out.push(piece);return out;
-  }
   function normalAt(pts,i){const a=pts[Math.max(0,i-1)],b=pts[Math.min(pts.length-1,i+1)];const dx=b[0]-a[0],dy=b[1]-a[1];const L=Math.hypot(dx,dy)||1;return [-dy/L,dx/L]}
   function tangentEnd(pts,atStart){const n=pts.length;const a=atStart?pts[1]:pts[n-2],b=atStart?pts[0]:pts[n-1];const dx=b[0]-a[0],dy=b[1]-a[1];const L=Math.hypot(dx,dy)||1;return [dx/L,dy/L]}
 
@@ -430,7 +424,7 @@ ul{padding-left:20px}li{margin:6px 0;max-width:70ch}
     if(!shape.closed)for(const hd of lines.slice(1))s+=`<path d="${outlineD([...hd,hd[0]])}" fill="#111"/>`;
     const on=style.line==='dashed'?base*4.2:0,off=base*2.8;
     for(const ln of lines){
-      const strokes=sketch?splitStrokes(ln,shape.closed).flatMap(st=>splitLong(st,shape.penLen||130)):[ln];
+      const strokes=sketch?splitStrokes(ln,shape.closed):[ln];
       for(const st of strokes){
         const smp=sketch?handDraw(st,base,rnd,T,shape.closed||ln.length===3):cleanDraw(st,base);
         if(style.line==='dotted'){

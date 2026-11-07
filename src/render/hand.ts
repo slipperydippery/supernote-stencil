@@ -2,8 +2,8 @@
  * Hand-drawn look, ported from the spike and the design prototype. Constants are expressed
  * in a 200-unit preview space and scaled by the shape's long side.
  *
- * One outline becomes several pen strokes: split at corners sharper than 35
- * degrees, long smooth runs split again into hand-length pieces. Each stroke
+ * One outline becomes one pen stroke per run between corners sharper than 35
+ * degrees, however long, as a confident hand draws it. Each stroke
  * gets a single bow, a width profile over its length and a small overshoot
  * where it meets another stroke. Width is later mapped to pen pressure.
  */
@@ -14,7 +14,7 @@ import { seeded } from './rng';
 export type XY = [number, number];
 export type Sample = { x: number; y: number; w: number };
 
-export const LOCKED = { bow: 2, swing: 0.4, over: 3, penLen: 130 } as const;
+export const LOCKED = { bow: 2, swing: 0.4, over: 3 } as const;
 const PREVIEW = 200;
 
 export function resample(pts: XY[], step: number): XY[] {
@@ -61,30 +61,6 @@ export function splitStrokes(pts: XY[], closed: boolean): XY[][] {
     strokes[0] = last.concat(strokes[0].slice(1));
   }
   return strokes;
-}
-
-export function splitLong(stroke: XY[], maxLen: number): XY[][] {
-  const s = cum(stroke);
-  const L = s[s.length - 1];
-  const n = Math.ceil(L / maxLen);
-  if (n < 2) {
-    return [stroke];
-  }
-  const out: XY[][] = [];
-  let piece: XY[] = [stroke[0]];
-  let k = 1;
-  for (let i = 1; i < stroke.length; i++) {
-    piece.push(stroke[i]);
-    if (s[i] >= (L * k) / n && k < n) {
-      out.push(piece);
-      piece = [stroke[i]];
-      k++;
-    }
-  }
-  if (piece.length > 1) {
-    out.push(piece);
-  }
-  return out;
 }
 
 function normalAt(pts: XY[], i: number): XY {
@@ -154,14 +130,12 @@ export function handDraw(stroke: XY[], base: number, rnd: () => number, T: HandO
 /**
  * Turns an outline in page pixels into hand-drawn pen strokes. Constants scale
  * with the outline's long side so a 480 px box gets the same look as the preview.
- * `penLen` is in preview units; pass Infinity to draw a smooth outline in one stroke.
  */
 export function handDrawnOutline(
   outline: XY[],
   closed: boolean,
   seed: number,
   base: number,
-  penLen: number = LOCKED.penLen,
 ): Sample[][] {
   let minX = Infinity,
     minY = Infinity,
@@ -177,7 +151,6 @@ export function handDrawnOutline(
   const T: HandOpts = { bow: LOCKED.bow * k, swing: LOCKED.swing, over: LOCKED.over * k, step: 4 };
   const rnd = seeded(seed);
   return splitStrokes(outline, closed)
-    .flatMap(st => splitLong(st, penLen * k))
     .map(st => handDraw(st, base, rnd, T, closed))
     .filter(s => s.length > 1);
 }

@@ -125,7 +125,6 @@ describe('renderShape', () => {
     const box = defaultBox(SHAPES.rectangle);
     const plan = renderShape(SHAPES.rectangle, box, style({ look: 'hand' }), 3);
     expect(plan.geometries).toHaveLength(0);
-    // splitLong breaks only at outline vertices, so a two-point side stays one stroke.
     expect(plan.strokes).toHaveLength(4);
     const side = (p: { x: number; y: number }) =>
       [Math.abs(p.y - box.top), Math.abs(p.x - box.right), Math.abs(p.y - box.bottom), Math.abs(p.x - box.left)].indexOf(
@@ -144,15 +143,13 @@ describe('renderShape', () => {
     }
   });
 
-  it('splits the smooth outline of a hand-drawn rounded rectangle by pen length', () => {
+  it('draws the smooth outline of a hand-drawn rounded rectangle in one pass at any size', () => {
     const box = defaultBox(SHAPES.rounded);
-    // No corner is sharper than 35°, so the whole outline is one run; only penLen splits it.
+    // No corner is sharper than 35°, so the whole outline is one run.
     expect(splitStrokes(toXY(SHAPES.rounded.outline(box)[0]), true)).toHaveLength(1);
-    const plan = renderShape(SHAPES.rounded, box, style({ look: 'hand' }), 3);
-    expect(plan.strokes.length).toBeGreaterThanOrEqual(4);
-    // A larger box keeps the same number of hand-length pieces: constants scale with the shape.
-    const big = { left: 0, top: 0, right: 960, bottom: 480 };
-    expect(renderShape(SHAPES.rounded, big, style({ look: 'hand' }), 3).strokes).toHaveLength(plan.strokes.length);
+    expect(renderShape(SHAPES.rounded, box, style({ look: 'hand' }), 3).strokes).toHaveLength(1);
+    const big = { left: 0, top: 0, right: 1600, bottom: 800 };
+    expect(renderShape(SHAPES.rounded, big, style({ look: 'hand' }), 3).strokes).toHaveLength(1);
   });
 
   it('draws a hand-drawn circle in one stroke', () => {
