@@ -21,12 +21,12 @@ export const ICONS: Record<ShapeId, ImageSourcePropType> = {
   manualInput: require('../../assets/shapes/manualInput.png'),
   storedData: require('../../assets/shapes/storedData.png'),
   offPage: require('../../assets/shapes/offPage.png'),
-  line: require('../../assets/shapes/line.png'),
   arrow: require('../../assets/shapes/arrow.png'),
+  arrowDown: require('../../assets/shapes/arrowDown.png'),
   doubleArrow: require('../../assets/shapes/doubleArrow.png'),
   elbowArrow: require('../../assets/shapes/elbowArrow.png'),
-  curvedArrow: require('../../assets/shapes/curvedArrow.png'),
-  arrowDown: require('../../assets/shapes/arrowDown.png'),
+  archArrow: require('../../assets/shapes/archArrow.png'),
+  scoopArrow: require('../../assets/shapes/scoopArrow.png'),
 };
 
 export type GlyphKey = { [K in keyof Style]: `${K}-${Style[K]}` }[keyof Style];

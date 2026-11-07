@@ -1,7 +1,7 @@
 /**
- * Fills as pen-10 strokes clipped to the outline polygon: solid as dense
- * horizontal lines in the tone's grey, hatch and cross as 45° lines whose
- * spacing is set by the tone alone.
+ * Fills as pen-10 strokes clipped to the outline polygon: solid fills (and
+ * black arrow heads) as dense horizontal lines in the tone's grey, hatch and
+ * cross as 45° lines whose spacing is set by the tone alone.
  */
 import type { Box, Pt } from '../shapes/types';
 import { handDraw, LOCKED, resample, type XY } from './hand';
@@ -76,6 +76,30 @@ function straight([p, q]: [Pt, Pt]): Pt[] {
   return resample([[p.x, p.y], [q.x, q.y]], STEP).map(([x, y]) => ({ x, y }));
 }
 
+/** Dense horizontal lines that overlap into a flat tone. */
+function solid(outline: Pt[], b: Box, color: StrokeSpec['penColor'], width: number): StrokeSpec[] {
+  const out: StrokeSpec[] = [];
+  const gap = Math.max(1, 0.9 * widthPx(width));
+  const half = widthPx(width) / 2;
+  for (let y = b.top + gap / 2; y < b.bottom; y += gap) {
+    for (const seg of clipLine(outline, { x: b.left - 1, y }, { x: 1, y: 0 })) {
+      const s = inset(seg, half);
+      if (s) {
+        out.push(stroke(straight(s), color, width));
+      }
+    }
+  }
+  return out;
+}
+
+/** Pen width for head fills: fine enough that the round caps leave a straight edge where no outline covers it. */
+const HEAD_FILL_WIDTH = 200;
+
+/** Solid black fill for a closed arrow head, whatever the shape's weight or fill. */
+export function headStrokes(outline: Pt[]): StrokeSpec[] {
+  return solid(outline, boundsOf(outline), 0, HEAD_FILL_WIDTH);
+}
+
 /**
  * Fill strokes for a closed outline. Segments stop half a stroke width short
  * of the boundary so round caps stay inside the outline.
@@ -90,22 +114,10 @@ export function fillStrokes(outline: Pt[], style: Style, width: number, seed: nu
   if (!(w > 0 && h > 0)) {
     return [];
   }
-  const out: StrokeSpec[] = [];
-
   if (style.fill === 'solid') {
-    const color = TONE_COLOR[style.tone];
-    const gap = Math.max(1, 0.9 * widthPx(width));
-    const half = widthPx(width) / 2;
-    for (let y = b.top + gap / 2; y < b.bottom; y += gap) {
-      for (const seg of clipLine(outline, { x: b.left - 1, y }, { x: 1, y: 0 })) {
-        const s = inset(seg, half);
-        if (s) {
-          out.push(stroke(straight(s), color, width));
-        }
-      }
-    }
-    return out;
+    return solid(outline, b, TONE_COLOR[style.tone], width);
   }
+  const out: StrokeSpec[] = [];
 
   // Hatch: 45° lines stepped along x. The perpendicular gap is the tone's
   // constant, so the step along x is √2 times that.

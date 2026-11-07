@@ -2,7 +2,7 @@ import { dashLengths } from '../src/render/dashes';
 import { peakThickness, splitStrokes, toXY } from '../src/render/hand';
 import { renderShape, type Plan } from '../src/render/plan';
 import { DEFAULT_STYLE, FILLS, LINES, LOOKS, TONE_GAP, TONES, WEIGHTS, firmwareWidth, type Style } from '../src/render/style';
-import { SHAPES } from '../src/shapes';
+import { SHAPES, type ShapeDef } from '../src/shapes';
 import { ALL_IDS, defaultBox, inside } from '../test/helpers';
 
 /** Every combination of the outline keys at the default tone, plus every tone on every fill: tone only changes a fill's spacing or grey. */
@@ -10,6 +10,14 @@ const STYLES: Style[] = [
   ...LOOKS.flatMap(look => LINES.flatMap(line => FILLS.flatMap(fill => WEIGHTS.map(weight => ({ ...DEFAULT_STYLE, weight, line, fill, look }))))),
   ...TONES.flatMap(tone => FILLS.filter(fill => fill !== 'none').map(fill => ({ ...DEFAULT_STYLE, fill, tone }))),
 ];
+
+/** A bare 2-point open outline, for exercising the dash renderer's degenerate-end
+ * handling directly. `id` only matters for plan.ts's ellipse check, irrelevant here. */
+const OPEN_LINE: ShapeDef = {
+  id: 'arrow', family: 'arrow', label: 'open line (test fixture)', closed: false,
+  defaultSize: { w: 0, h: 0 }, keepAspect: false,
+  outline: box => [[{ x: box.left, y: box.top }, { x: box.right, y: box.bottom }]],
+};
 
 function allPoints(plan: Plan) {
   return [...plan.strokes.flatMap(s => s.points), ...plan.geometries.flatMap(g => g.points)];
@@ -83,11 +91,42 @@ describe('renderShape', () => {
     expect(head[3]).toEqual(head[0]);
   });
 
+  it.each(LOOKS)('fills every arrow head solid black inside the head (%s)', look => {
+    for (const def of ALL_IDS.map(id => SHAPES[id]).filter(d => d.family === 'arrow')) {
+      const box = defaultBox(def);
+      const heads = def.outline(box).slice(1).map(h => [...h, h[0]]);
+      const fills = renderShape(def, box, style({ look }), 1).strokes.filter(s => s.penType === 10);
+      expect(fills.length).toBeGreaterThanOrEqual(heads.length * 3);
+      for (const s of fills) {
+        expect(s.penColor).toBe(0);
+        for (const p of s.points) {
+          expect(heads.some(h => inside(h, p))).toBe(true);
+        }
+      }
+    }
+  });
+
+  it('leaves the shape fill style off arrows: only the heads are filled', () => {
+    const def = SHAPES.arrow;
+    const plain = renderShape(def, defaultBox(def), DEFAULT_STYLE, 1);
+    const dark = renderShape(def, defaultBox(def), style({ fill: 'dark' }), 1);
+    expect(dark.strokes).toEqual(plain.strokes);
+  });
+
+  it('draws a long hand-drawn arrow shaft in one pass per corner-to-corner run', () => {
+    const box = { left: 0, top: 900, right: 900, bottom: 0 };
+    // Each head is two barb strokes, split at its tip.
+    const pens = (def: ShapeDef) => renderShape(def, box, style({ look: 'hand' }), 5).strokes.filter(s => s.penType === 16).length;
+    expect(pens(SHAPES.archArrow)).toBe(1 + 2);
+    expect(pens(SHAPES.scoopArrow)).toBe(1 + 2);
+    expect(pens(SHAPES.arrow)).toBe(1 + 2);
+    expect(pens(SHAPES.elbowArrow)).toBe(3 + 2);
+  });
+
   it('draws a hand-drawn rectangle as four pen strokes, one per side', () => {
     const box = defaultBox(SHAPES.rectangle);
     const plan = renderShape(SHAPES.rectangle, box, style({ look: 'hand' }), 3);
     expect(plan.geometries).toHaveLength(0);
-    // splitLong breaks only at outline vertices, so a two-point side stays one stroke.
     expect(plan.strokes).toHaveLength(4);
     const side = (p: { x: number; y: number }) =>
       [Math.abs(p.y - box.top), Math.abs(p.x - box.right), Math.abs(p.y - box.bottom), Math.abs(p.x - box.left)].indexOf(
@@ -106,15 +145,13 @@ describe('renderShape', () => {
     }
   });
 
-  it('splits the smooth outline of a hand-drawn rounded rectangle by pen length', () => {
+  it('draws the smooth outline of a hand-drawn rounded rectangle in one pass at any size', () => {
     const box = defaultBox(SHAPES.rounded);
-    // No corner is sharper than 35°, so the whole outline is one run; only penLen splits it.
+    // No corner is sharper than 35°, so the whole outline is one run.
     expect(splitStrokes(toXY(SHAPES.rounded.outline(box)[0]), true)).toHaveLength(1);
-    const plan = renderShape(SHAPES.rounded, box, style({ look: 'hand' }), 3);
-    expect(plan.strokes.length).toBeGreaterThanOrEqual(4);
-    // A larger box keeps the same number of hand-length pieces: constants scale with the shape.
-    const big = { left: 0, top: 0, right: 960, bottom: 480 };
-    expect(renderShape(SHAPES.rounded, big, style({ look: 'hand' }), 3).strokes).toHaveLength(plan.strokes.length);
+    expect(renderShape(SHAPES.rounded, box, style({ look: 'hand' }), 3).strokes).toHaveLength(1);
+    const big = { left: 0, top: 0, right: 1600, bottom: 800 };
+    expect(renderShape(SHAPES.rounded, big, style({ look: 'hand' }), 3).strokes).toHaveLength(1);
   });
 
   it('draws a hand-drawn circle in one stroke', () => {
@@ -166,7 +203,7 @@ describe('renderShape', () => {
   it('keeps a dot on the open end of a dotted line', () => {
     const { dot } = dashLengths(600);
     // Exactly one gap long: without keepEnd the dot at the far end would be dropped as a corner duplicate.
-    const plan = renderShape(SHAPES.line, { left: 0, top: 0, right: 16, bottom: 0 }, style({ line: 'dotted' }), 1);
+    const plan = renderShape(OPEN_LINE, { left: 0, top: 0, right: 16, bottom: 0 }, style({ line: 'dotted' }), 1);
     expect(dot).toBeLessThan(16);
     expect(plan.strokes).toHaveLength(2);
   });
@@ -177,7 +214,7 @@ describe('renderShape', () => {
     const [, right, left] = def.outline(defaultBox(def));
     const offsets = (head: { x: number; y: number }[]) =>
       plan.strokes
-        .find(s => Math.abs(s.points[Math.floor(s.points.length / 2)].x - head[1].x) < 30)!
+        .find(s => s.penType === 16 && Math.abs(s.points[Math.floor(s.points.length / 2)].x - head[1].x) < 30)!
         .pressures.slice(0, 5);
     expect(offsets(right)).not.toEqual(offsets(left));
   });

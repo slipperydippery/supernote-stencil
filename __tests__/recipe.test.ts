@@ -10,8 +10,8 @@ describe('recipe', () => {
 
   it('serialises keys in contract order', () => {
     const style = { look: 'hand', tone: 'light', fill: 'none', line: 'solid', weight: 'thin' } as const;
-    expect(serializeRecipe({ seed: 3, style, shape: 'line', v: 1 } as Recipe)).toBe(
-      '{"v":1,"shape":"line","style":{"weight":"thin","line":"solid","fill":"none","tone":"light","look":"hand"},"seed":3}',
+    expect(serializeRecipe({ seed: 3, style, shape: 'rectangle', v: 1 } as Recipe)).toBe(
+      '{"v":1,"shape":"rectangle","style":{"weight":"thin","line":"solid","fill":"none","tone":"light","look":"hand"},"seed":3}',
     );
   });
 
@@ -26,7 +26,7 @@ describe('recipe', () => {
   });
 
   it('rejects a four-key style whose fill is not a pre-tone value', () => {
-    expect(parseRecipe('{"v":1,"shape":"line","style":{"weight":"thin","line":"solid","fill":"cross","look":"hand"},"seed":1}')).toBeNull();
+    expect(parseRecipe('{"v":1,"shape":"rectangle","style":{"weight":"thin","line":"solid","fill":"cross","look":"hand"},"seed":1}')).toBeNull();
   });
 
   it('round-trips flip, omitting the key when absent', () => {
@@ -40,7 +40,7 @@ describe('recipe', () => {
   });
 
   it('rejects a malformed flip', () => {
-    const base = '{"v":1,"shape":"line","style":{"weight":"thin","line":"solid","fill":"none","tone":"dark","look":"hand"},"seed":1';
+    const base = '{"v":1,"shape":"rectangle","style":{"weight":"thin","line":"solid","fill":"none","tone":"dark","look":"hand"},"seed":1';
     expect(parseRecipe(`${base},"flip":"yes"}`)).toBeNull();
     expect(parseRecipe(`${base},"flip":{"x":"yes"}}`)).toBeNull();
   });
@@ -52,9 +52,9 @@ describe('recipe', () => {
     ['other version', '{"v":2}'],
     ['not json', '{v:1'],
     ['unknown shape', '{"v":1,"shape":"star","style":{"weight":"thin","line":"solid","fill":"none","tone":"dark","look":"hand"},"seed":1}'],
-    ['bad style', '{"v":1,"shape":"line","style":{"weight":"huge","line":"solid","fill":"none","tone":"dark","look":"hand"},"seed":1}'],
-    ['bad tone', '{"v":1,"shape":"line","style":{"weight":"thin","line":"solid","fill":"none","tone":"grey","look":"hand"},"seed":1}'],
-    ['missing seed', '{"v":1,"shape":"line","style":{"weight":"thin","line":"solid","fill":"none","tone":"dark","look":"hand"}}'],
+    ['bad style', '{"v":1,"shape":"rectangle","style":{"weight":"huge","line":"solid","fill":"none","tone":"dark","look":"hand"},"seed":1}'],
+    ['bad tone', '{"v":1,"shape":"rectangle","style":{"weight":"thin","line":"solid","fill":"none","tone":"grey","look":"hand"},"seed":1}'],
+    ['missing seed', '{"v":1,"shape":"rectangle","style":{"weight":"thin","line":"solid","fill":"none","tone":"dark","look":"hand"}}'],
     ['json null', 'null'],
   ])('rejects %s', (_, s) => {
     expect(parseRecipe(s as string | null | undefined)).toBeNull();
