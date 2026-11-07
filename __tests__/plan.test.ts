@@ -111,6 +111,16 @@ describe('renderShape', () => {
     expect(dark.strokes).toEqual(plain.strokes);
   });
 
+  it('draws a long hand-drawn arrow shaft in one pass per corner-to-corner run', () => {
+    const box = { left: 0, top: 900, right: 900, bottom: 0 };
+    // Each head is two barb strokes, split at its tip.
+    const pens = (def: ShapeDef) => renderShape(def, box, style({ look: 'hand' }), 5).strokes.filter(s => s.penType === 16).length;
+    expect(pens(SHAPES.archArrow)).toBe(1 + 2);
+    expect(pens(SHAPES.scoopArrow)).toBe(1 + 2);
+    expect(pens(SHAPES.arrow)).toBe(1 + 2);
+    expect(pens(SHAPES.elbowArrow)).toBe(3 + 2);
+  });
+
   it('draws a hand-drawn rectangle as four pen strokes, one per side', () => {
     const box = defaultBox(SHAPES.rectangle);
     const plan = renderShape(SHAPES.rectangle, box, style({ look: 'hand' }), 3);

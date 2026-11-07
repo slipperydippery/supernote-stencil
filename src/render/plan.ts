@@ -75,7 +75,8 @@ function cleanDashed(def: ShapeDef, outlines: Pt[][], style: Style, width: numbe
 
 function handStrokes(def: ShapeDef, outlines: Pt[][], style: Style, width: number, seed: number): StrokeSpec[] {
   const peak = peakThickness(width, LOCKED.swing);
-  const penLen = ELLIPSES.has(def.id) ? Infinity : LOCKED.penLen;
+  // Ellipses and arrows go down in one confident pass per corner-to-corner run.
+  const penLen = ELLIPSES.has(def.id) || !def.closed ? Infinity : LOCKED.penLen;
   const out: StrokeSpec[] = [];
   outlines.forEach((outline, i) => {
     const pens = handDrawnOutline(toXY(outline), def.closed, partSeed(seed, i), width, penLen);
