@@ -119,6 +119,7 @@ for (const g of Object.keys(STYLE_VALUES) as (keyof Style)[]) {
     GLYPH[`${g}-${v}`] = asset(`assets/glyphs/${g}-${v}.png`);
   }
 }
+const PIN_ON = asset('assets/glyphs/pin-on.png');
 const ICON = Object.fromEntries((Object.keys(SHAPES) as ShapeId[]).map(id => [id, asset(`assets/shapes/${id}.png`)]));
 
 function label(x: number, y: number, text: string, size: number, opts: { weight?: number; fill?: string; anchor?: string } = {}): string {
@@ -215,7 +216,7 @@ function strip(style: Style, id: ShapeId, action?: string): string {
     s += box(mx, my, mark, mark, 4 * R, '#000', R, dark ? '#000' : '#fff');
     const c = { x: mx + mark / 2, y: my + mark / 2 };
     if (m === 'pin') {
-      s += `<circle cx="${c.x}" cy="${c.y - 6 * R}" r="${5 * R}" fill="#fff"/><rect x="${c.x - R}" y="${c.y - 2 * R}" width="${2 * R}" height="${12 * R}" fill="#fff"/>`;
+      s += `<image href="${PIN_ON}" x="${c.x - 12 * R}" y="${c.y - 12 * R}" width="${24 * R}" height="${24 * R}"/>`;
     } else if (m === 'check') {
       s += `<path d="M${c.x - 9 * R} ${c.y} l${6 * R} ${7 * R} l${12 * R} ${-14 * R}" fill="none" stroke="#fff" stroke-width="${3 * R}" stroke-linecap="round" stroke-linejoin="round"/>`;
     } else {
