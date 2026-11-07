@@ -132,6 +132,20 @@ function glyph(draw: Draw): Buffer {
   return canvas.toBuffer('image/png');
 }
 
+// Strip toggle marks: Material's push pin, viewbox 24 x 24, drawn at 3x. The
+// "on" variant is white because it sits on the filled (black) toggle.
+const PIN = 'M16 9V4h1c.55 0 1-.45 1-1s-.45-1-1-1H7c-.55 0-1 .45-1 1s.45 1 1 1h1v5c0 1.66-1.34 3-3 3v2h5.97v7l1 1 1-1v-7H19v-2c-1.66 0-3-1.34-3-3z';
+const MARKS: Record<string, string> = { pin: INK, 'pin-on': '#fff' };
+
+function mark(fill: string): Buffer {
+  const canvas = createCanvas(72, 72);
+  const ctx = canvas.getContext('2d');
+  ctx.scale(3, 3);
+  ctx.fillStyle = fill;
+  ctx.fill(new Path2D(PIN));
+  return canvas.toBuffer('image/png');
+}
+
 mkdirSync(join(ROOT, 'shapes'), { recursive: true });
 mkdirSync(join(ROOT, 'glyphs'), { recursive: true });
 for (const id of Object.keys(SHAPES) as ShapeId[]) {
@@ -139,4 +153,7 @@ for (const id of Object.keys(SHAPES) as ShapeId[]) {
 }
 for (const [name, draw] of Object.entries(GLYPHS)) {
   save(join(ROOT, 'glyphs', `${name}.png`), glyph(draw));
+}
+for (const [name, fill] of Object.entries(MARKS)) {
+  save(join(ROOT, 'glyphs', `${name}.png`), mark(fill));
 }

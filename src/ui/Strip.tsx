@@ -2,7 +2,7 @@ import React from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import type { Style } from '../render/style';
 import type { ShapeDef } from '../shapes';
-import { ICONS } from './icons';
+import { ICONS, PIN } from './icons';
 import StyleBar from './StyleBar';
 import { INK, PAPER, RULE, STRIP_HEIGHT, STRIP_MARGIN_X, STRIP_TOP } from './theme';
 
@@ -34,7 +34,7 @@ export default function Strip({ shape, style, onStyle, onExpand, onClose, action
           accessibilityState={{ checked: armOnOpen.value }}
           onPress={armOnOpen.onToggle}
           style={[styles.mark, armOnOpen.value && styles.markOn]}>
-          {armOnOpen.value && <Text style={[styles.markText, styles.markTextOn]}>✓</Text>}
+          <Image source={armOnOpen.value ? PIN.on : PIN.off} style={styles.markIcon} resizeMode="contain" />
         </Pressable>
       )}
       {action && (
@@ -72,6 +72,7 @@ const styles = StyleSheet.create({
   bar: { flex: 1 },
   mark: { minWidth: 40, height: 40, paddingHorizontal: 6, borderWidth: 1, borderColor: INK, borderRadius: 4, alignItems: 'center', justifyContent: 'center' },
   markOn: { backgroundColor: INK },
+  markIcon: { width: 24, height: 24 },
   markText: { fontSize: 22, color: INK },
   markTextOn: { color: PAPER },
 });
