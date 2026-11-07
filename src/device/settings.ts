@@ -1,5 +1,5 @@
 import { FileUtils, PluginManager } from 'sn-plugin-lib';
-import { DEFAULT_STYLE, isStyle, type Style } from '../render/style';
+import { DEFAULT_STYLE, readStyle, STYLE_KEYS, type Style } from '../render/style';
 import { FAMILIES, SHAPES, type Family, type ShapeId } from '../shapes';
 
 export type Settings = { style: Style; lastShape: ShapeId | null; tab: Family; armOnOpen: boolean };
@@ -13,7 +13,7 @@ function encode(s: Settings, key: Key): string {
   switch (key) {
     case 'style':
       // Plain words: the value is a directory name, so keep it to [a-z-] rather than encoded JSON.
-      return [s.style.weight, s.style.line, s.style.fill, s.style.look].join('-');
+      return STYLE_KEYS.map(k => s.style[k]).join('-');
     case 'lastShape':
       return s.lastShape ?? 'none';
     case 'tab':
@@ -26,9 +26,11 @@ function encode(s: Settings, key: Key): string {
 function decode(out: Settings, key: Key, raw: string): void {
   switch (key) {
     case 'style': {
-      const [weight, line, fill, look] = raw.split('-');
-      const style = { weight, line, fill, look };
-      out.style = raw.split('-').length === 4 && isStyle(style) ? style : { ...DEFAULT_STYLE };
+      const parts = raw.split('-');
+      // Five words today; four from a version without tone, which readStyle upgrades.
+      const keys = parts.length === STYLE_KEYS.length ? STYLE_KEYS : parts.length === 4 ? STYLE_KEYS.filter(k => k !== 'tone') : null;
+      const style = keys ? readStyle(Object.fromEntries(keys.map((k, i) => [k, parts[i]]))) : null;
+      out.style = style ?? { ...DEFAULT_STYLE };
       return;
     }
     case 'lastShape':

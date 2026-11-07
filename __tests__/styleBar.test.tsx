@@ -18,18 +18,34 @@ const chipIdsIn = (node: ReturnType<typeof rowNode>) =>
   node ? [...new Set(node.findAll(n => typeof n.props.testID === 'string' && n.props.testID.startsWith('chip-') && typeof n.type !== 'string').map(n => n.props.testID))] : [];
 
 describe('StyleBar', () => {
-  it('splits the panel size into two balanced rows of six, not a 10/2 flex-wrap', () => {
+  it('splits the panel size into two balanced rows, 8 and 7, with tone beside fill', () => {
     const r = render(<StyleBar style={DEFAULT_STYLE} onStyle={() => {}} size="panel" />);
     expect(rowNode(r, 'stylebar-row-0')).toBeDefined();
     expect(rowNode(r, 'stylebar-row-1')).toBeDefined();
-    expect(chipIdsIn(rowNode(r, 'stylebar-row-0'))).toHaveLength(6);
-    expect(chipIdsIn(rowNode(r, 'stylebar-row-1'))).toHaveLength(6);
+    expect(chipIdsIn(rowNode(r, 'stylebar-row-0'))).toHaveLength(8);
+    expect(chipIdsIn(rowNode(r, 'stylebar-row-1'))).toEqual([
+      'chip-fill-none', 'chip-fill-solid', 'chip-fill-hatch', 'chip-fill-cross',
+      'chip-tone-light', 'chip-tone-dark', 'chip-tone-black',
+    ]);
   });
 
-  it('keeps the strip size on one row of twelve', () => {
+  it('keeps the strip size on one row of fifteen', () => {
     const r = render(<StyleBar style={DEFAULT_STYLE} onStyle={() => {}} size="strip" />);
     expect(rowNode(r, 'stylebar-row-1')).toBeUndefined();
-    expect(chipIdsIn(rowNode(r, 'stylebar-row-0'))).toHaveLength(12);
+    expect(chipIdsIn(rowNode(r, 'stylebar-row-0'))).toHaveLength(15);
+  });
+
+  it('disables the tone chips while fill is none and enables them with a fill', () => {
+    const onStyle = jest.fn();
+    const chip = (r: ReactTestRenderer) => r.root.findAllByProps({ testID: 'chip-tone-light' })[0].props;
+    const none = render(<StyleBar style={DEFAULT_STYLE} onStyle={onStyle} size="panel" />);
+    expect(chip(none).disabled).toBe(true);
+    expect(chip(none).accessibilityState).toEqual({ selected: false, disabled: true });
+    const hatched = render(<StyleBar style={{ ...DEFAULT_STYLE, fill: 'hatch' }} onStyle={onStyle} size="panel" />);
+    expect(chip(hatched).disabled).toBe(false);
+    expect(chip(hatched).accessibilityState).toEqual({ selected: false });
+    act(() => chip(hatched).onPress());
+    expect(onStyle).toHaveBeenCalledWith({ ...DEFAULT_STYLE, fill: 'hatch', tone: 'light' });
   });
 
   it('still reports a style change regardless of row', () => {

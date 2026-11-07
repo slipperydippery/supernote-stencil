@@ -1,13 +1,15 @@
 import { dashLengths } from '../src/render/dashes';
 import { peakThickness, splitStrokes, toXY } from '../src/render/hand';
 import { renderShape, type Plan } from '../src/render/plan';
-import { DEFAULT_STYLE, FILLS, LINES, LOOKS, WEIGHTS, firmwareWidth, type Style } from '../src/render/style';
+import { DEFAULT_STYLE, FILLS, LINES, LOOKS, TONE_GAP, TONES, WEIGHTS, firmwareWidth, type Style } from '../src/render/style';
 import { SHAPES } from '../src/shapes';
 import { ALL_IDS, defaultBox, inside } from '../test/helpers';
 
-const STYLES: Style[] = LOOKS.flatMap(look =>
-  LINES.flatMap(line => FILLS.flatMap(fill => WEIGHTS.map(weight => ({ weight, line, fill, look })))),
-);
+/** Every combination of the outline keys at the default tone, plus every tone on every fill: tone only changes a fill's spacing or grey. */
+const STYLES: Style[] = [
+  ...LOOKS.flatMap(look => LINES.flatMap(line => FILLS.flatMap(fill => WEIGHTS.map(weight => ({ ...DEFAULT_STYLE, weight, line, fill, look }))))),
+  ...TONES.flatMap(tone => FILLS.filter(fill => fill !== 'none').map(fill => ({ ...DEFAULT_STYLE, fill, tone }))),
+];
 
 function allPoints(plan: Plan) {
   return [...plan.strokes.flatMap(s => s.points), ...plan.geometries.flatMap(g => g.points)];
@@ -180,15 +182,21 @@ describe('renderShape', () => {
     expect(offsets(right)).not.toEqual(offsets(left));
   });
 
-  it.each(['light', 'dark', 'hatch'] as const)('clips the %s fill to the diamond and draws it first', fill => {
+  it.each([
+    ['solid', 'light', 201],
+    ['solid', 'dark', 157],
+    ['solid', 'black', 0],
+    ['hatch', 'dark', 0],
+    ['cross', 'light', 0],
+  ] as const)('clips the %s %s fill to the diamond and draws it in pen %i', (fill, tone, color) => {
     const def = SHAPES.diamond;
-    const plan = renderShape(def, defaultBox(def), style({ fill }), 1);
+    const plan = renderShape(def, defaultBox(def), style({ fill, tone }), 1);
     const poly = def.outline(defaultBox(def))[0];
     const fills = plan.strokes;
     expect(fills.length).toBeGreaterThan(5);
     for (const s of fills) {
       expect(s.penType).toBe(10);
-      expect(s.penColor).toBe(fill === 'light' ? 201 : fill === 'dark' ? 157 : 0);
+      expect(s.penColor).toBe(color);
       for (const p of s.points) {
         expect(inside(poly, p)).toBe(true);
       }
@@ -196,8 +204,46 @@ describe('renderShape', () => {
     expect(plan.geometries).toHaveLength(1);
   });
 
+  describe('hatch spacing', () => {
+    const tall = { left: 0, top: 0, right: 80, bottom: 600 };
+    const wide = { left: 0, top: 0, right: 600, bottom: 80 };
+    /** Perpendicular distance between the first two hatch lines, measured where they cross the top edge. */
+    const firstGap = (plan: Plan) => {
+      const xs = plan.strokes.filter(s => s.penType === 10).map(s => Math.min(...s.points.map(p => p.x - p.y))).sort((a, b) => a - b);
+      return ((xs[1] - xs[0]) * Math.SQRT1_2);
+    };
+
+    it.each(TONES)('is the %s tone constant, whatever the box', tone => {
+      for (const box of [tall, wide]) {
+        expect(firstGap(renderShape(SHAPES.rectangle, box, style({ fill: 'hatch', tone }), 1))).toBeCloseTo(TONE_GAP[tone], 0);
+      }
+    });
+
+    it('puts the same number of lines in a tall box and the same box turned sideways', () => {
+      const count = (box: typeof tall) => renderShape(SHAPES.rectangle, box, style({ fill: 'hatch' }), 1).strokes.length;
+      expect(Math.abs(count(tall) - count(wide))).toBeLessThanOrEqual(1);
+    });
+
+    it('is unchanged by weight', () => {
+      const box = defaultBox(SHAPES.rectangle);
+      for (const weight of WEIGHTS) {
+        expect(firstGap(renderShape(SHAPES.rectangle, box, style({ fill: 'hatch', weight }), 1))).toBeCloseTo(TONE_GAP.dark, 0);
+      }
+    });
+
+    it('cross adds the other diagonal at the same gap', () => {
+      const box = defaultBox(SHAPES.rectangle);
+      const hatch = renderShape(SHAPES.rectangle, box, style({ fill: 'hatch' }), 1).strokes;
+      const cross = renderShape(SHAPES.rectangle, box, style({ fill: 'cross' }), 1).strokes;
+      expect(Math.abs(cross.length - 2 * hatch.length)).toBeLessThanOrEqual(1);
+      const slope = (s: Plan['strokes'][number]) => Math.sign((s.points[s.points.length - 1].y - s.points[0].y) * (s.points[s.points.length - 1].x - s.points[0].x));
+      expect(hatch.every(s => slope(s) > 0)).toBe(true);
+      expect(cross.some(s => slope(s) < 0)).toBe(true);
+    });
+  });
+
   it('emits fill strokes before outline strokes', () => {
-    const plan = renderShape(SHAPES.rectangle, defaultBox(SHAPES.rectangle), style({ fill: 'dark', look: 'hand' }), 1);
+    const plan = renderShape(SHAPES.rectangle, defaultBox(SHAPES.rectangle), style({ fill: 'solid', look: 'hand' }), 1);
     const firstPen16 = plan.strokes.findIndex(s => s.penType === 16);
     expect(firstPen16).toBeGreaterThan(0);
     expect(plan.strokes.slice(firstPen16).every(s => s.penType === 16)).toBe(true);
