@@ -20,23 +20,26 @@ export type StripProps = {
 export default function Strip({ shape, style, onStyle, onExpand, onClose, action, armOnOpen }: StripProps) {
   return (
     <View style={styles.strip}>
-      <Pressable testID="strip-preview" accessibilityRole="button" accessibilityLabel={`${shape.label}, choose another shape`} onPress={onExpand} style={styles.preview}>
-        <Image testID={`strip-icon-${shape.id}`} source={ICONS[shape.id]} style={styles.previewIcon} resizeMode="contain" />
-      </Pressable>
+      {/* The shape and its pin are one tile, so "pinned" reads as a property of the shape. A fixed width keeps the chips still when the pinned frame thickens. */}
+      <View testID="strip-tile" style={[styles.tile, armOnOpen ? styles.tileWithTab : styles.tileAlone, armOnOpen?.value && styles.tilePinned]}>
+        <Pressable testID="strip-preview" accessibilityRole="button" accessibilityLabel={`${shape.label}, choose another shape`} onPress={onExpand} style={styles.preview}>
+          <Image testID={`strip-icon-${shape.id}`} source={ICONS[shape.id]} style={styles.previewIcon} resizeMode="contain" />
+        </Pressable>
+        {armOnOpen && (
+          <Pressable
+            testID="strip-arm-on-open"
+            accessibilityRole="checkbox"
+            accessibilityLabel="Keep this shape ready next time"
+            accessibilityState={{ checked: armOnOpen.value }}
+            onPress={armOnOpen.onToggle}
+            style={[styles.tab, armOnOpen.value && styles.tabOn]}>
+            <Image source={armOnOpen.value ? PIN.on : PIN.off} style={[styles.markIcon, !armOnOpen.value && styles.tabIconOff]} resizeMode="contain" />
+          </Pressable>
+        )}
+      </View>
       <View style={styles.bar}>
         <StyleBar style={style} onStyle={onStyle} size="strip" />
       </View>
-      {armOnOpen && (
-        <Pressable
-          testID="strip-arm-on-open"
-          accessibilityRole="checkbox"
-          accessibilityLabel="Open straight to the strip next time"
-          accessibilityState={{ checked: armOnOpen.value }}
-          onPress={armOnOpen.onToggle}
-          style={[styles.mark, armOnOpen.value && styles.markOn]}>
-          <Image source={armOnOpen.value ? PIN.on : PIN.off} style={styles.markIcon} resizeMode="contain" />
-        </Pressable>
-      )}
       {action && (
         <Pressable testID="strip-action" accessibilityRole="button" accessibilityLabel={action.label} onPress={action.onPress} style={[styles.mark, styles.markOn]}>
           <Text style={[styles.markText, styles.markTextOn]}>{action.label}</Text>
@@ -67,8 +70,17 @@ const styles = StyleSheet.create({
     borderColor: INK,
     borderRadius: 6,
   },
-  preview: { width: 64, height: 50, borderWidth: 1, borderColor: RULE, borderRadius: 4, alignItems: 'center', justifyContent: 'center' },
+  tile: { height: 50, flexDirection: 'row', borderWidth: 1, borderColor: RULE, borderRadius: 4, overflow: 'hidden' },
+  tileAlone: { width: 64 },
+  // 64 preview + 1 divider + 34 tab + 2 border.
+  tileWithTab: { width: 101 },
+  // Same frame as a chosen chip: 2 px of ink. The border grows inward, so the strip beside it does not move.
+  tilePinned: { borderWidth: 2, borderColor: INK },
+  preview: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   previewIcon: { width: 44, height: 44 },
+  tab: { width: 34, borderLeftWidth: 1, borderLeftColor: RULE, alignItems: 'center', justifyContent: 'center', backgroundColor: PAPER },
+  tabOn: { backgroundColor: INK, borderLeftColor: INK },
+  tabIconOff: { opacity: 0.55 },
   bar: { flex: 1 },
   mark: { minWidth: 40, height: 40, paddingHorizontal: 6, borderWidth: 1, borderColor: INK, borderRadius: 4, alignItems: 'center', justifyContent: 'center' },
   markOn: { backgroundColor: INK },

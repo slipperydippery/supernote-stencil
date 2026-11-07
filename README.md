@@ -21,11 +21,11 @@ Tap **Stencil** in the sidebar. A panel opens on the left: pick a family tab (Ba
 
 ### Strip
 
-The armed shape, its style glyphs and a close mark sit in a strip along the top edge; the rest of the page stays free below it. Tap the strip's preview to reopen the panel and pick another shape.
+The armed shape with its pin, the style glyphs and a close mark sit in a strip along the top edge; the rest of the page stays free below it. Tap the shape in the strip to reopen the panel and pick another shape.
 
 ### Place
 
-Tap the page to place the shape at its default size under the pen, or drag to render it into the swept box. The plugin closes with the new shape lassoed. Shape, style and tab are remembered, so the next open goes straight to the strip. Tap the pin next to the strip's close button to unpin it, and the next open shows the shape picker instead.
+Tap the page to place the shape at its default size under the pen, or drag to render it into the swept box. The plugin closes with the new shape lassoed. Shape, style and tab are remembered, so the next open goes straight to the strip. Tap the pin on the strip's shape tile to unpin it, and the next open shows the shape picker instead.
 
 ### Wrap
 

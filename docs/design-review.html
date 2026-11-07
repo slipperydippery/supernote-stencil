@@ -87,8 +87,15 @@ code{font-family:var(--mono);font-size:.85em;background:var(--paper-2);padding:1
 .lassobar span:last-child{border-right:0}
 .lassobar span.on{background:#111;color:#f2f1ec}
 .strip{position:absolute;left:4%;right:4%;top:3%;height:9%;background:#f2f1ec;border:1px solid #111;border-radius:5px;display:flex;align-items:center;gap:6px;padding:0 6px}
-.strippreview{width:12%;height:72%;border:1px solid #777;border-radius:3px;background:#fff;display:flex;align-items:center;justify-content:center}
+.striptile{display:flex;width:12%;height:72%;border:1px solid #777;border-radius:3px;background:#fff;overflow:hidden}
+.striptile.tabbed{width:19%}
+.striptile.pinned{border:2px solid #111}
+.strippreview{flex:1;min-width:0;display:flex;align-items:center;justify-content:center}
 .strippreview svg{width:85%;height:85%}
+.striptab{width:34%;flex:none;border-left:1px solid #777;display:flex;align-items:center;justify-content:center}
+.striptab svg{width:60%;height:60%;fill:#777}
+.striptile.pinned .striptab{background:#111;border-left-color:#111}
+.striptile.pinned .striptab svg{fill:#f2f1ec}
 .strip .stylebar{border:0;background:transparent;padding:0;flex:1;gap:4px}
 .strip .chip{width:20px;height:16px}
 .strip .chip svg{width:15px;height:10px}
@@ -155,8 +162,8 @@ ul{padding-left:20px}li{margin:6px 0;max-width:70ch}
     <tr><td>Scope v1</td><td>Shape palette, wrap, redraw</td><td>No transform action: the native lasso scales everything proportionally and degrades it, and the engine's own resize degrades too. Size is set at insert and fixed by regeneration.</td></tr>
     <tr><td>Device</td><td>Manta, page read at runtime</td><td>Defaults tuned for 1920 × 2560 px. Page size comes from <code>getPageSize</code> so Nomad works later without changes.</td></tr>
     <tr class="changed"><td>Carriers</td><td>Clean = geometry element, hand-drawn = pen 16 strokes</td><td>Geometry gives one element per shape, undo, and lasso on insert, and needs no file permission. Strokes on the pressure pen are the only way to vary width along a line. Measured on device.</td></tr>
-    <tr class="changed"><td>Insert</td><td>Panel to choose, strip to place</td><td>The panel opens on the left with tabs, style bar and grid. Tapping a shape collapses it into a strip along the top edge showing the shape preview, the style glyphs and a close mark; the rest of the page is live. Tap places at default size, drag sizes. The strip vanishes, the shape stays lassoed. Proven in spike round 6.</td></tr>
-    <tr class="changed"><td>Armed on open</td><td>Opens straight into the strip, a toggle in the strip controls it</td><td>Stencil remembers the last shape and style. By default opening it arms that shape at once, so a run of boxes is tap Stencil, drag, repeat; a pin toggle in the strip (filled when on) turns this off, so the next open shows the panel instead, with the remembered shape pre-selected. Tap the preview in the strip to expand the panel and switch shapes.</td></tr>
+    <tr class="changed"><td>Insert</td><td>Panel to choose, strip to place</td><td>The panel opens on the left with tabs, style bar and grid. Tapping a shape collapses it into a strip along the top edge showing the shape tile, the style glyphs and a close mark; the rest of the page is live. Tap places at default size, drag sizes. The strip vanishes, the shape stays lassoed. Proven in spike round 6.</td></tr>
+    <tr class="changed"><td>Armed on open</td><td>Opens straight into the strip, a toggle in the strip controls it</td><td>Stencil remembers the last shape and style. By default opening it arms that shape at once, so a run of boxes is tap Stencil, drag, repeat; a pin tab on the shape tile turns this off, so the next open shows the panel instead, with the remembered shape pre-selected. The pin sits with the shape it keeps, not with the close mark: when pinned the tab fills and the tile's frame thickens from a grey hairline to 2 dp of ink, the same frame a chosen chip has, at a fixed tile width so nothing beside it moves (GH-37, chosen from six prototypes). Tap the preview in the tile to expand the panel and switch shapes.</td></tr>
     <tr class="changed"><td>Resize</td><td>Never scale, redraw from recipe</td><td>Every Stencil element carries shape id, style and seed in <code>userData</code>. Lasso, pull the native handle, tap Stencil: the strip appears armed with that recipe, restyle if wanted, tap apply, and the selection is rendered fresh into the lasso box. Other ink in the selection is left alone and the shape is redrawn at its own size; part of a shape redraws all of it, found through a page read and lassoed whole before deleting; both only while the selection was not moved or stretched; two Stencil shapes in one selection are refused. Clean shapes go in as geometry page elements so they carry a recipe too, at the cost of native undo.</td></tr>
     <tr><td>Palette layout</td><td>Family tabs</td><td>E-ink scrolls badly, so each family gets one panel of cells. The tab is remembered between opens.</td></tr>
     <tr class="changed"><td>Style bar</td><td>Glyphs, five groups</td><td>Weight 3, line 3, fill 4 (none, solid, hatch, cross), tone 3 (light, dark, black), look 2. Tone is dimmed while fill is none. Applies to the next insert, remembered across sessions.</td></tr>
@@ -197,7 +204,7 @@ ul{padding-left:20px}li{margin:6px 0;max-width:70ch}
       <h3>Strip</h3>
       <div class="device"><div class="screen page">
         <div class="strip">
-          <div class="strippreview" data-strippreview></div>
+          <div class="striptile tabbed pinned"><div class="strippreview" data-strippreview></div><span class="striptab"><svg viewBox="0 0 24 24"><path d="M16 9V4h1c.55 0 1-.45 1-1s-.45-1-1-1H7c-.55 0-1 .45-1 1s.45 1 1 1h1v5c0 1.66-1.34 3-3 3v2h5.97v7l1 1 1-1v-7H19v-2c-1.66 0-3-1.34-3-3z"/></svg></span></div>
           <div class="stylebar strip-style" data-stylebar></div>
           <span class="stripx">×</span>
         </div>
@@ -205,14 +212,14 @@ ul{padding-left:20px}li{margin:6px 0;max-width:70ch}
         <div class="band"></div>
         <div class="pen"></div>
       </div></div>
-      <p>The strip shows what will be placed. Glyphs are live, so you can still change weight, line, fill or look. Tap the page to place at default size, drag to size. Then the strip goes and the shape stays lassoed.</p>
+      <p>The strip shows what will be placed. The shape tile carries the pin: filled, with an ink frame, while the shape stays armed for the next open. Glyphs are live, so you can still change weight, line, fill or look. Tap the page to place at default size, drag to size. Then the strip goes and the shape stays lassoed.</p>
     </div>
     <div class="frame-card">
       <span class="eyebrow">3 · Redraw</span>
       <h3>From the lasso toolbar</h3>
       <div class="device"><div class="screen page">
         <div class="strip">
-          <div class="strippreview" data-redrawpreview></div>
+          <div class="striptile"><div class="strippreview" data-redrawpreview></div></div>
           <div class="stylebar strip-style" data-stylebar></div>
           <span class="stripx on">✓</span>
         </div>

@@ -1,4 +1,5 @@
 import React from 'react';
+import { StyleSheet } from 'react-native';
 import { act, create, type ReactTestRenderer } from 'react-test-renderer';
 import { DEFAULT_STYLE } from '../src/render/style';
 import { SHAPES } from '../src/shapes';
@@ -56,6 +57,16 @@ describe('Strip', () => {
   it('omits the arm-on-open control when no prop is passed (RedrawFlow)', () => {
     const r = render(<Strip shape={SHAPES.decision} style={DEFAULT_STYLE} onStyle={noop} onExpand={noop} onClose={noop} />);
     expect(r.root.findAllByProps({ testID: 'strip-arm-on-open' })).toHaveLength(0);
+    expect(StyleSheet.flatten(r.root.findByProps({ testID: 'strip-tile' }).props.style).width).toBe(64);
+  });
+
+  it('frames the shape tile in ink when pinned, at a fixed width so the chips do not move', () => {
+    const tile = (value: boolean) => {
+      const r = render(<Strip shape={SHAPES.decision} style={DEFAULT_STYLE} onStyle={noop} onExpand={noop} onClose={noop} armOnOpen={{ value, onToggle: noop }} />);
+      return StyleSheet.flatten(r.root.findByProps({ testID: 'strip-tile' }).props.style);
+    };
+    expect(tile(false)).toMatchObject({ width: 101, borderWidth: 1 });
+    expect(tile(true)).toMatchObject({ width: 101, borderWidth: 2 });
   });
 
   it('reports the arm-on-open toggle and reflects its checked state', () => {

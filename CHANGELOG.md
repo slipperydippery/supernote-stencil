@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Strip: the pin moves from the close mark to the shape it keeps. The preview is one tile with a pin tab on its right; pinned, the tab fills and the tile's frame thickens to ink, at a fixed width so the chips stay put (GH-37).
+
 ## 1.1.0 — 2026-11-07
 
 - Fill tone: fill is none, solid, hatch or cross, and a new tone group (light, dark, black) sets the grey of a solid fill and the spacing of hatch lines. Spacing is a constant per tone instead of a share of the box height, so one style reads the same on every size. Saved styles and recipes from 1.0.0 are upgraded on read; an old hatch redraws at black, the spacing closest to what it had (GH-20).
