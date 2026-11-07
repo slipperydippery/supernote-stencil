@@ -1,8 +1,8 @@
-import { Element, PluginCommAPI, PluginManager } from 'sn-plugin-lib';
+import { Element, PluginCommAPI, PluginFileAPI, PluginManager } from 'sn-plugin-lib';
 import type { Plan } from '../render/plan';
 import { parseRecipe, serializeRecipe, type Recipe } from '../render/recipe';
 import type { Box } from '../shapes';
-import type { PageCtx } from './page';
+import { currentPage, type PageCtx } from './page';
 import { call, recycle } from './sdk';
 
 /** Integer widths render as hairlines (finding "thickness unit"), so always carry a fraction. */
@@ -77,8 +77,11 @@ export type LassoSelection = {
   recipes: number;
   /** Distinct Stencil shapes in the selection. */
   shapes: number;
-  /** The one shape's elements and the bounds of their points, when other elements were selected with it. */
-  own: { nums: number[]; box: Box } | null;
+  /**
+   * The one shape's elements and the bounds of their points, when they differ from the selection:
+   * other elements were selected with it, or only part of it was. `tag` is set in the second case.
+   */
+  own: { nums: number[]; box: Box; tag?: string } | null;
 };
 
 /** Bounds of the elements' centrelines, not inflated by stroke width. */
@@ -104,6 +107,28 @@ async function pointBounds(elements: any[]): Promise<Box | null> {
 }
 
 /**
+ * The page's elements carrying `tag`, but only when the page read agrees with the lasso: every
+ * lassoed element of the shape must be among them under the same number. Inserts reach the page
+ * read only once the note is saved, so a fresh shape fails this, and a stale numbering must never
+ * drive a delete.
+ */
+async function pageGroup(tag: string, lassoed: number[]): Promise<{ nums: number[]; box: Box; tag: string } | null> {
+  const { notePath, page } = await currentPage();
+  const elements = (await call<any[] | null>('getElements', PluginFileAPI.getElements(page, notePath))) ?? [];
+  try {
+    const group = elements.filter(e => e?.userData === tag);
+    const nums = group.map(e => e.numInPage);
+    if (!lassoed.every(n => nums.includes(n))) {
+      return null;
+    }
+    const box = await pointBounds(group);
+    return box ? { nums, box, tag } : null;
+  } finally {
+    elements.forEach(recycle);
+  }
+}
+
+/**
  * `rect` is the visual lasso box, inflated by half the stroke width; callers shrink it.
  * `liveRect` is the current selection box even while a native stretch is pending (`getLassoRect`
  * keeps returning the pre-resize box until the selection is dropped and made again); it falls
@@ -126,11 +151,17 @@ export async function readLasso(): Promise<LassoSelection> {
     const [tag, group = []]: [string?, any[]?] = groups.entries().next().value ?? [];
     const recipe = parseRecipe(tag);
     let own: LassoSelection['own'] = null;
-    if (groups.size === 1 && group.length < elements.length) {
-      const nums = group.map(e => e.numInPage);
-      const box = await pointBounds(group);
-      if (box && nums.every(n => Number.isInteger(n))) {
-        own = { nums, box };
+    const nums: number[] = group.map(e => e.numInPage);
+    if (groups.size === 1 && nums.every(n => Number.isInteger(n))) {
+      const whole = await pageGroup(tag!, nums).catch(e => {
+        console.warn('page read failed; redrawing the selection only', e);
+        return null;
+      });
+      if (whole && whole.nums.length > nums.length) {
+        own = whole;
+      } else if (group.length < elements.length) {
+        const box = await pointBounds(group);
+        own = box ? { nums, box } : null;
       }
     }
     let liveRect = rect;
@@ -157,5 +188,45 @@ export async function replaceLasso(ctx: PageCtx, plan: Plan, recipe: Recipe): Pr
 /** Replaces only the listed elements; the rest of the selection stays on the page as it was. */
 export async function replaceElements(ctx: PageCtx, nums: number[], plan: Plan, recipe: Recipe): Promise<Box> {
   await call('deletePageElements', PluginCommAPI.deletePageElements(nums, ctx.page));
+  return insertPlan(ctx, plan, recipe);
+}
+
+/** Grows the shape's centreline bounds by stroke width and overshoot, so the lasso catches all of it. */
+const WHOLE_PAD = 16;
+
+/**
+ * Deleting an element outside the lasso unbinds the note (the next call fails with 105 and the
+ * note is closed), so the whole shape is lassoed first and only what that lasso holds is deleted.
+ * lassoElements needs the plugin view closed. Throws, changing nothing, unless the lasso holds
+ * exactly the `expected` elements carrying `tag`.
+ */
+export async function replaceWhole(ctx: PageCtx, tag: string, expected: number, box: Box, plan: Plan, recipe: Recipe): Promise<Box> {
+  await PluginManager.closePluginView();
+  await call(
+    'lassoElements',
+    PluginCommAPI.lassoElements({
+      left: Math.floor(box.left - WHOLE_PAD),
+      top: Math.floor(box.top - WHOLE_PAD),
+      right: Math.ceil(box.right + WHOLE_PAD),
+      bottom: Math.ceil(box.bottom + WHOLE_PAD),
+    }),
+  );
+  // lassoElements does not refresh the element cache, which would still hold the previous selection.
+  PluginCommAPI.clearElementCache();
+  const selected = (await call<any[] | null>('getLassoElements', PluginCommAPI.getLassoElements())) ?? [];
+  let nums: number[];
+  try {
+    nums = selected.filter(e => e?.userData === tag).map(e => e.numInPage);
+  } finally {
+    selected.forEach(recycle);
+  }
+  if (nums.length !== expected) {
+    throw new Error(`the lasso caught ${nums.length} of the shape's ${expected} elements; nothing was changed`);
+  }
+  if (nums.length === selected.length) {
+    await call('deleteLassoElements', PluginCommAPI.deleteLassoElements());
+  } else {
+    await call('deletePageElements', PluginCommAPI.deletePageElements(nums, ctx.page));
+  }
   return insertPlan(ctx, plan, recipe);
 }
