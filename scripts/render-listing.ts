@@ -3,17 +3,18 @@
  * Composes the InkHub listing images from Manta screenshots. Run with
  * `npm run listing` and commit the output.
  *
- * Raw screenshots go in docs/listing/raw/ under the names in IMAGES. Each one
- * is cropped to the page (the device sidebar and footer are cut), optionally
+ * Raw screenshots go in docs/listing/raw/ under the names in IMAGES; shots of
+ * the plugin's own UI are built from 01-diagram.png. Each one is cropped to the page (the device sidebar and footer are cut), optionally
  * to a region of it, and placed under a caption; pairs sit side by side or
  * stacked, whichever shows the crop larger.
  */
 import { createCanvas, GlobalFonts, loadImage, type SKRSContext2D } from '@napi-rs/canvas';
-import { existsSync, mkdirSync, writeFileSync } from 'fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
+import { scenes } from './listing-scenes';
 
 type Rect = { x: number; y: number; w: number; h: number };
-type Shot = { file: string; label?: string };
+type Shot = ({ file: string } | { scene: string }) & { label?: string };
 type Spec = { name: string; caption: string; shots: Shot[]; crop?: Rect };
 
 const DIR = join(__dirname, '..', 'docs', 'listing');
@@ -36,45 +37,53 @@ const FRAME = '#bbb';
 const FONT_PATH = '/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf';
 const FONT = 'Noto Sans';
 
-// Crops are in screenshot pixels; set them once the real shots exist.
+// Crops are in screenshot pixels. The firmware's screenshots leave out the
+// plugin view, so the shots that show Stencil's UI are scenes (listing-scenes.ts).
 const IMAGES: Spec[] = [
   {
     name: '01-diagram',
     caption: 'Diagram shapes, placed with the pen',
     shots: [{ file: '01-diagram.png' }],
+    crop: { x: 124, y: 80, w: 1796, h: 2240 },
   },
   {
-    name: '02-panel',
+    name: '02-styles',
+    caption: 'Fills, tones, dashes and curved arrows',
+    shots: [{ file: '02-styles.png' }],
+    crop: { x: 200, y: 0, w: 1600, h: 2400 },
+  },
+  {
+    name: '03-panel',
     caption: '22 shapes, clean or hand-drawn',
-    shots: [{ file: '02-panel.png' }],
-    crop: { x: 100, y: 40, w: 960, h: 1440 },
+    shots: [{ scene: 'panel' }],
+    crop: { x: 0, y: 0, w: 1060, h: 1460 },
   },
   {
-    name: '03-place',
+    name: '04-place',
     caption: 'Tap for the default size, drag to size it',
     shots: [
-      { file: '03-place-drag.png', label: 'Drag' },
-      { file: '03-place-done.png', label: 'Placed' },
+      { scene: 'placeDrag', label: 'Drag' },
+      { scene: 'placeDone', label: 'Placed' },
     ],
-    crop: { x: 0, y: 0, w: 1920, h: 960 },
+    crop: { x: 0, y: 0, w: 1920, h: 900 },
   },
   {
-    name: '04-wrap',
+    name: '05-wrap',
     caption: 'Lasso your writing, wrap it in a shape',
     shots: [
-      { file: '04-wrap-before.png', label: 'Lasso, then tap Stencil' },
-      { file: '04-wrap-after.png', label: 'Pick a shape' },
+      { scene: 'wrapBefore', label: 'Lasso, then tap Stencil' },
+      { scene: 'wrapAfter', label: 'Pick a shape' },
     ],
-    crop: { x: 420, y: 800, w: 1080, h: 520 },
+    crop: { x: 470, y: 900, w: 980, h: 470 },
   },
   {
-    name: '05-redraw',
+    name: '06-redraw',
     caption: 'Stretch with the lasso, redraw it clean',
     shots: [
-      { file: '05-redraw-before.png', label: 'Stretched' },
-      { file: '05-redraw-after.png', label: 'Redrawn' },
+      { scene: 'redrawBefore', label: 'Stretched' },
+      { scene: 'redrawAfter', label: 'Redrawn' },
     ],
-    crop: { x: 0, y: 0, w: 1920, h: 960 },
+    crop: { x: 0, y: 0, w: 1920, h: 900 },
   },
 ];
 
@@ -93,10 +102,13 @@ function text(ctx: SKRSContext2D, s: string, size: number, color: string, x: num
   ctx.fillText(s, x, y);
 }
 
-async function compose(spec: Spec): Promise<Buffer | null> {
-  const missing = spec.shots.filter(s => !existsSync(join(RAW, s.file)));
+async function compose(spec: Spec, built: Record<string, string>): Promise<Buffer | null> {
+  const missing = spec.shots.flatMap(s => {
+    const ok = 'file' in s ? existsSync(join(RAW, s.file)) : s.scene in built;
+    return ok ? [] : ['file' in s ? s.file : '01-diagram.png'];
+  });
   if (missing.length > 0) {
-    console.warn(`${spec.name}: skipped, missing ${missing.map(s => s.file).join(', ')}`);
+    console.warn(`${spec.name}: skipped, missing ${missing.join(', ')}`);
     return null;
   }
   const canvas = createCanvas(OUT_W, OUT_H);
@@ -122,7 +134,7 @@ async function compose(spec: Spec): Promise<Buffer | null> {
   const y0 = top + (availH - (stacked ? n * (used.h + lab) + (n - 1) * GAP : used.h + lab)) / 2;
 
   for (const [i, shot] of spec.shots.entries()) {
-    const img = await loadImage(join(RAW, shot.file));
+    const img = await loadImage('file' in shot ? join(RAW, shot.file) : Buffer.from(built[shot.scene]));
     const box = stacked
       ? { x: MARGIN, y: y0 + i * (used.h + lab + GAP), w: cell.w, h: used.h }
       : { x: MARGIN + i * (cell.w + GAP), y: y0, w: cell.w, h: used.h };
@@ -143,8 +155,11 @@ async function main() {
     throw new Error(`Font not found: ${FONT_PATH}`);
   }
   mkdirSync(RAW, { recursive: true });
+  // Scenes reuse the device sidebar and the handwriting of the diagram shot.
+  const diagram = join(RAW, '01-diagram.png');
+  const built = existsSync(diagram) ? scenes(readFileSync(diagram)) : {};
   for (const spec of IMAGES) {
-    const png = await compose(spec);
+    const png = await compose(spec, built);
     if (png) {
       const path = join(DIR, `${spec.name}.png`);
       writeFileSync(path, png);
