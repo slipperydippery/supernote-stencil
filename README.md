@@ -37,11 +37,12 @@ Lasso a placed Stencil shape, pull the native resize handle to the size you want
 
 ## Style bar glyphs
 
-Four chip groups set the style of the next insert and are remembered across sessions:
+Five chip groups set the style of the next insert and are remembered across sessions:
 
 - **Weight** — thin, normal, thick: stroke width.
 - **Line** — solid, dashed, dotted: dashes render as separate strokes, so a dashed shape is several elements that redraw together.
-- **Fill** — none, hatch, light, dark: interior fill, drawn as extra strokes.
+- **Fill** — none, solid, hatch, cross: interior fill, drawn as extra strokes.
+- **Tone** — light, dark, black: the grey of a solid fill, or the spacing of the hatch lines (68, 25 and 13 px). Spacing is a constant, not a share of the box, so one style reads the same on every size.
 - **Look** — clean, hand: constant-width geometry, or a hand-drawn stroke with a pressure-mapped width profile.
 
 ## Limitations and deferred work

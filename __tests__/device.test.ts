@@ -130,8 +130,8 @@ import { currentPage, DEFAULT_SETTINGS, insertPlan, loadSettings, readLasso, rep
 import type { Settings } from '../src/device';
 
 const ctx = { notePath: '/note/a.note', page: 2, width: 1920, height: 2560, unit: 1 };
-const recipe: Recipe = { v: 1, shape: 'rectangle', style: { weight: 'normal', line: 'solid', fill: 'none', look: 'hand' }, seed: 7 };
-const tag = '{"v":1,"shape":"rectangle","style":{"weight":"normal","line":"solid","fill":"none","look":"hand"},"seed":7}';
+const recipe: Recipe = { v: 1, shape: 'rectangle', style: { weight: 'normal', line: 'solid', fill: 'none', tone: 'dark', look: 'hand' }, seed: 7 };
+const tag = '{"v":1,"shape":"rectangle","style":{"weight":"normal","line":"solid","fill":"none","tone":"dark","look":"hand"},"seed":7}';
 
 const plan: Plan = {
   strokes: [
@@ -323,7 +323,7 @@ describe('currentPage', () => {
 
 describe('settings', () => {
   it('round-trips', async () => {
-    const s: Settings = { style: { weight: 'thick', line: 'dashed', fill: 'hatch', look: 'hand' }, lastShape: 'decision', tab: 'flow', armOnOpen: false };
+    const s: Settings = { style: { weight: 'thick', line: 'dashed', fill: 'hatch', tone: 'light', look: 'hand' }, lastShape: 'decision', tab: 'flow', armOnOpen: false };
     await saveSettings(s);
     expect(await loadSettings()).toEqual(s);
     await saveSettings(DEFAULT_SETTINGS);
@@ -338,9 +338,20 @@ describe('settings', () => {
   });
 
   it('stores every value as a plain directory name', async () => {
-    await saveSettings({ style: { weight: 'thick', line: 'dashed', fill: 'hatch', look: 'hand' }, lastShape: 'decision', tab: 'flow', armOnOpen: false });
+    await saveSettings({ style: { weight: 'thick', line: 'dashed', fill: 'hatch', tone: 'light', look: 'hand' }, lastShape: 'decision', tab: 'flow', armOnOpen: false });
     const leaves = [...mockState.dirs].filter(d => d.split('/').length === 5).sort();
-    expect(leaves).toEqual(['/plugin/settings/armOnOpen/off', '/plugin/settings/lastShape/decision', '/plugin/settings/style/thick-dashed-hatch-hand', '/plugin/settings/tab/flow']);
+    expect(leaves).toEqual(['/plugin/settings/armOnOpen/off', '/plugin/settings/lastShape/decision', '/plugin/settings/style/thick-dashed-hatch-light-hand', '/plugin/settings/tab/flow']);
+  });
+
+  it('upgrades a four-word style saved before tone', async () => {
+    await saveSettings(DEFAULT_SETTINGS);
+    for (const d of [...mockState.dirs]) {
+      if (d.startsWith('/plugin/settings/style/')) {
+        mockState.dirs.delete(d);
+      }
+    }
+    mockState.dirs.add('/plugin/settings/style/thick-dashed-light-hand');
+    expect((await loadSettings()).style).toEqual({ weight: 'thick', line: 'dashed', fill: 'solid', tone: 'light', look: 'hand' });
   });
 
   it('saves the other keys when the device refuses one', async () => {

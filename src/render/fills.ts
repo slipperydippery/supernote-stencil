@@ -1,12 +1,13 @@
 /**
- * Fills as pen-10 strokes clipped to the outline polygon: light and dark grey
- * (and black arrow heads) as dense horizontal lines, hatch as 45° lines.
+ * Fills as pen-10 strokes clipped to the outline polygon: solid fills (and
+ * black arrow heads) as dense horizontal lines in the tone's grey, hatch and
+ * cross as 45° lines whose spacing is set by the tone alone.
  */
 import type { Box, Pt } from '../shapes/types';
 import { handDraw, LOCKED, resample, type XY } from './hand';
 import type { StrokeSpec } from './plan';
 import { seeded } from './rng';
-import { firmwareWidth, widthPx, type Style } from './style';
+import { firmwareWidth, TONE_COLOR, TONE_GAP, widthPx, type Style } from './style';
 
 const STEP = 4;
 const PRESSURE = 2000;
@@ -113,21 +114,22 @@ export function fillStrokes(outline: Pt[], style: Style, width: number, seed: nu
   if (!(w > 0 && h > 0)) {
     return [];
   }
-  if (style.fill === 'light' || style.fill === 'dark') {
-    return solid(outline, b, style.fill === 'light' ? 201 : 157, width);
+  if (style.fill === 'solid') {
+    return solid(outline, b, TONE_COLOR[style.tone], width);
   }
   const out: StrokeSpec[] = [];
 
-  // Hatch: lines running down-right, stepped along x like the reference renderer.
+  // Hatch: 45° lines stepped along x. The perpendicular gap is the tone's
+  // constant, so the step along x is √2 times that.
   const thickness = 0.45 * width;
-  const gap = Math.max(4, (10 * h) / 120);
+  const step = TONE_GAP[style.tone] * Math.SQRT2;
   const half = widthPx(thickness) / 2;
-  const d = { x: Math.SQRT1_2, y: Math.SQRT1_2 };
   const k = Math.max(w, h) / 200;
   const T = { bow: LOCKED.bow * k * 0.5, swing: LOCKED.swing * 0.5, over: 0, step: STEP };
   const rnd = seeded(seed);
-  for (let x = b.left - h + gap / 2; x < b.right; x += gap) {
-    for (const seg of clipLine(outline, { x, y: b.top }, d)) {
+  const directions: Array<1 | -1> = style.fill === 'cross' ? [1, -1] : [1];
+  for (const dir of directions) {
+    for (const seg of diagonals(outline, b, step, dir)) {
       const s = inset(seg, half);
       if (!s) {
         continue;
@@ -140,6 +142,22 @@ export function fillStrokes(outline: Pt[], style: Style, width: number, seed: nu
         out.push(stroke(pts, 0, thickness));
       }
     }
+  }
+  return out;
+}
+
+/**
+ * The 45° lines through `poly`, `step` apart along x. `dir` 1 runs down-right
+ * (the lines start left of the box), -1 runs down-left (they start past its right edge).
+ */
+function diagonals(poly: Pt[], b: Box, step: number, dir: 1 | -1): [Pt, Pt][] {
+  const h = b.bottom - b.top;
+  const d = { x: dir * Math.SQRT1_2, y: Math.SQRT1_2 };
+  const from = dir > 0 ? b.left - h : b.left;
+  const to = dir > 0 ? b.right : b.right + h;
+  const out: [Pt, Pt][] = [];
+  for (let x = from + step / 2; x < to; x += step) {
+    out.push(...clipLine(poly, { x, y: b.top }, d));
   }
   return out;
 }

@@ -78,21 +78,24 @@ function line(d: string, width: number, dash?: number[]): Draw {
 
 const SQUARE = { x: 5, y: 1.5, w: 12, h: 11 };
 
-function square(fill: string | null, hatch = false): Draw {
+const HATCH = 'M2 12 L12 2M6 15 L16 5M10 15 L20 5M-2 12 L8 2';
+const CROSS = HATCH + 'M10 -1 L20 9M6 1 L16 11M2 3 L12 13M-2 5 L8 15';
+
+function square(fill: string | null, lines?: string): Draw {
   return ctx => {
     const { x, y, w, h } = SQUARE;
     if (fill) {
       ctx.fillStyle = fill;
       ctx.fillRect(x, y, w, h);
     }
-    if (hatch) {
+    if (lines) {
       ctx.save();
       ctx.beginPath();
       ctx.rect(x, y, w, h);
       ctx.clip();
       ctx.strokeStyle = INK;
       ctx.lineWidth = 1;
-      ctx.stroke(new Path2D('M2 12 L12 2M6 15 L16 5M10 15 L20 5M-2 12 L8 2'));
+      ctx.stroke(new Path2D(lines));
       ctx.restore();
     }
     ctx.strokeStyle = INK;
@@ -110,9 +113,13 @@ const GLYPHS: Record<string, Draw> = {
   'line-dashed': line('M3 7h16', 1.8, [4, 3]),
   'line-dotted': line('M3 7h16', 1.8, [0.1, 3.2]),
   'fill-none': square(null),
-  'fill-hatch': square(null, true),
-  'fill-light': square('#c9c9c9'),
-  'fill-dark': square('#9d9d9d'),
+  'fill-solid': square('#9d9d9d'),
+  'fill-hatch': square(null, HATCH),
+  'fill-cross': square(null, CROSS),
+  // Tone: the grey of a solid fill, or how close the hatch lines sit.
+  'tone-light': square('#d4d4d4'),
+  'tone-dark': square('#8c8c8c'),
+  'tone-black': square(INK),
   'look-clean': line('M3 9 L19 5', 1.8),
   'look-hand': line('M3 9 C7 3, 10 11, 14 6 S18 4, 19 6', 1.8),
 };

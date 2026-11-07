@@ -1,24 +1,20 @@
 import { SHAPES, type ShapeId } from '../shapes';
-import { FILLS, LINES, LOOKS, WEIGHTS, type Style } from './style';
+import { readStyle, type Style } from './style';
 
 export type Recipe = { v: 1; shape: ShapeId; style: Style; seed: number; flip?: { x?: boolean; y?: boolean } };
 
 export function serializeRecipe(r: Recipe): string {
-  const { weight, line, fill, look } = r.style;
+  const { weight, line, fill, tone, look } = r.style;
   const out: { v: 1; shape: ShapeId; style: Style; seed: number; flip?: { x?: boolean; y?: boolean } } = {
     v: r.v,
     shape: r.shape,
-    style: { weight, line, fill, look },
+    style: { weight, line, fill, tone, look },
     seed: r.seed,
   };
   if (r.flip?.x || r.flip?.y) {
     out.flip = { ...(r.flip.x ? { x: true } : {}), ...(r.flip.y ? { y: true } : {}) };
   }
   return JSON.stringify(out);
-}
-
-function oneOf<T extends string>(values: readonly T[], x: unknown): x is T {
-  return typeof x === 'string' && (values as readonly string[]).includes(x);
 }
 
 export function parseRecipe(s: string | null | undefined): Recipe | null {
@@ -34,16 +30,12 @@ export function parseRecipe(s: string | null | undefined): Recipe | null {
   if (!o || typeof o !== 'object' || o.v !== 1) {
     return null;
   }
-  const st = o.style;
+  // Recipes written before GH-20 carry a four-key style; readStyle upgrades them.
+  const style = readStyle(o.style);
   if (
     typeof o.shape !== 'string' ||
     !Object.prototype.hasOwnProperty.call(SHAPES, o.shape) ||
-    !st ||
-    typeof st !== 'object' ||
-    !oneOf(WEIGHTS, st.weight) ||
-    !oneOf(LINES, st.line) ||
-    !oneOf(FILLS, st.fill) ||
-    !oneOf(LOOKS, st.look) ||
+    !style ||
     typeof o.seed !== 'number' ||
     !Number.isFinite(o.seed)
   ) {
@@ -59,7 +51,7 @@ export function parseRecipe(s: string | null | undefined): Recipe | null {
   return {
     v: 1,
     shape: o.shape,
-    style: { weight: st.weight, line: st.line, fill: st.fill, look: st.look },
+    style,
     seed: o.seed,
     ...(flip ? { flip } : {}),
   };
