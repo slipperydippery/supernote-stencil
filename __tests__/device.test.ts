@@ -323,7 +323,14 @@ describe('currentPage', () => {
 
 describe('settings', () => {
   it('round-trips', async () => {
-    const s: Settings = { style: { weight: 'thick', line: 'dashed', fill: 'hatch', tone: 'light', look: 'hand' }, lastShape: 'decision', tab: 'flow', armOnOpen: false };
+    const s: Settings = {
+      style: { weight: 'thick', line: 'dashed', fill: 'hatch', tone: 'light', look: 'hand' },
+      lastShape: 'decision',
+      tab: 'flow',
+      armOnOpen: false,
+      gaps: { light: 90, dark: 34, black: 9 },
+      wrapPadding: 48,
+    };
     await saveSettings(s);
     expect(await loadSettings()).toEqual(s);
     await saveSettings(DEFAULT_SETTINGS);
@@ -338,9 +345,23 @@ describe('settings', () => {
   });
 
   it('stores every value as a plain directory name', async () => {
-    await saveSettings({ style: { weight: 'thick', line: 'dashed', fill: 'hatch', tone: 'light', look: 'hand' }, lastShape: 'decision', tab: 'flow', armOnOpen: false });
+    await saveSettings({
+      style: { weight: 'thick', line: 'dashed', fill: 'hatch', tone: 'light', look: 'hand' },
+      lastShape: 'decision',
+      tab: 'flow',
+      armOnOpen: false,
+      gaps: { light: 90, dark: 34, black: 9 },
+      wrapPadding: 48,
+    });
     const leaves = [...mockState.dirs].filter(d => d.split('/').length === 5).sort();
-    expect(leaves).toEqual(['/plugin/settings/armOnOpen/off', '/plugin/settings/lastShape/decision', '/plugin/settings/style/thick-dashed-hatch-light-hand', '/plugin/settings/tab/flow']);
+    expect(leaves).toEqual([
+      '/plugin/settings/armOnOpen/off',
+      '/plugin/settings/gaps/90-34-9',
+      '/plugin/settings/lastShape/decision',
+      '/plugin/settings/style/thick-dashed-hatch-light-hand',
+      '/plugin/settings/tab/flow',
+      '/plugin/settings/wrapPadding/48',
+    ]);
   });
 
   it('upgrades a four-word style saved before tone', async () => {
@@ -374,7 +395,7 @@ describe('settings', () => {
     } finally {
       FileUtils.makeDir.mockImplementation(real);
     }
-    expect(await loadSettings()).toEqual({ style: DEFAULT_SETTINGS.style, lastShape: 'circle', tab: 'arrow', armOnOpen: DEFAULT_SETTINGS.armOnOpen });
+    expect(await loadSettings()).toEqual({ ...DEFAULT_SETTINGS, lastShape: 'circle', tab: 'arrow' });
   });
 
   it('also reads plain path strings, with a trailing slash', async () => {
@@ -397,7 +418,7 @@ describe('settings', () => {
       }
     }
     mockState.dirs.add('/plugin/settings/style/thick-dashed');
-    expect(await loadSettings()).toEqual({ style: DEFAULT_SETTINGS.style, lastShape: 'circle', tab: 'arrow', armOnOpen: DEFAULT_SETTINGS.armOnOpen });
+    expect(await loadSettings()).toEqual({ ...DEFAULT_SETTINGS, lastShape: 'circle', tab: 'arrow' });
   });
 
   it('round-trips armOnOpen off, and defaults an unrecognised value to on', async () => {
@@ -410,5 +431,21 @@ describe('settings', () => {
     }
     mockState.dirs.add('/plugin/settings/armOnOpen/garbled');
     expect((await loadSettings()).armOnOpen).toBe(true);
+  });
+
+  it.each([
+    ['gaps', '68-25', 'gaps'],
+    ['gaps', '68-26-13', 'gaps'],
+    ['wrapPadding', '25', 'wrapPadding'],
+    ['wrapPadding', 'wide', 'wrapPadding'],
+  ] as const)('defaults %s on an off-ladder value %s', async (key, raw, field) => {
+    await saveSettings({ ...DEFAULT_SETTINGS, gaps: { light: 90, dark: 34, black: 9 }, wrapPadding: 48 });
+    for (const d of [...mockState.dirs]) {
+      if (d.startsWith(`/plugin/settings/${key}/`)) {
+        mockState.dirs.delete(d);
+      }
+    }
+    mockState.dirs.add(`/plugin/settings/${key}/${raw}`);
+    expect((await loadSettings())[field]).toEqual(DEFAULT_SETTINGS[field]);
   });
 });
