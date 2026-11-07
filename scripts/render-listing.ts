@@ -5,7 +5,8 @@
  *
  * Raw screenshots go in docs/listing/raw/ under the names in IMAGES. Each one
  * is cropped to the page (the device sidebar and footer are cut), optionally
- * to a region of it, and placed under a caption; pairs sit side by side.
+ * to a region of it, and placed under a caption; pairs sit side by side or
+ * stacked, whichever shows the crop larger.
  */
 import { createCanvas, GlobalFonts, loadImage, type SKRSContext2D } from '@napi-rs/canvas';
 import { existsSync, mkdirSync, writeFileSync } from 'fs';
@@ -44,8 +45,9 @@ const IMAGES: Spec[] = [
   },
   {
     name: '02-panel',
-    caption: '22 shapes in three families, clean or hand-drawn',
+    caption: '22 shapes, clean or hand-drawn',
     shots: [{ file: '02-panel.png' }],
+    crop: { x: 100, y: 40, w: 960, h: 1440 },
   },
   {
     name: '03-place',
@@ -54,22 +56,25 @@ const IMAGES: Spec[] = [
       { file: '03-place-drag.png', label: 'Drag' },
       { file: '03-place-done.png', label: 'Placed' },
     ],
+    crop: { x: 0, y: 0, w: 1920, h: 960 },
   },
   {
     name: '04-wrap',
     caption: 'Lasso your writing, wrap it in a shape',
     shots: [
-      { file: '04-wrap-before.png', label: 'Before' },
-      { file: '04-wrap-after.png', label: 'After' },
+      { file: '04-wrap-before.png', label: 'Lasso, then tap Stencil' },
+      { file: '04-wrap-after.png', label: 'Pick a shape' },
     ],
+    crop: { x: 420, y: 800, w: 1080, h: 520 },
   },
   {
     name: '05-redraw',
-    caption: 'Redraw a shape into a new box',
+    caption: 'Stretch with the lasso, redraw it clean',
     shots: [
-      { file: '05-redraw-before.png', label: 'Before' },
-      { file: '05-redraw-after.png', label: 'After' },
+      { file: '05-redraw-before.png', label: 'Stretched' },
+      { file: '05-redraw-after.png', label: 'Redrawn' },
     ],
+    crop: { x: 0, y: 0, w: 1920, h: 960 },
   },
 ];
 
@@ -104,12 +109,24 @@ async function compose(spec: Spec): Promise<Buffer | null> {
   const labelled = spec.shots.some(s => s.label);
   const top = MARGIN + CAPTION_SIZE * 1.4 + GAP;
   const n = spec.shots.length;
-  const cellW = (OUT_W - 2 * MARGIN - (n - 1) * GAP) / n;
-  const cellH = OUT_H - top - MARGIN - (labelled ? LABEL_SIZE * 1.4 + GAP / 2 : 0);
+  const lab = labelled ? LABEL_SIZE * 1.4 + GAP / 2 : 0;
+  const availW = OUT_W - 2 * MARGIN;
+  const availH = OUT_H - top - MARGIN;
+  const row = { w: (availW - (n - 1) * GAP) / n, h: availH - lab };
+  const col = { w: availW, h: (availH - (n - 1) * GAP) / n - lab };
+  const scale = (c: { w: number; h: number }) => Math.min(c.w / crop.w, c.h / crop.h);
+  const stacked = n > 1 && scale(col) > scale(row);
+  const cell = stacked ? col : row;
+  const used = fit(crop, { x: 0, y: 0, ...cell });
+  // Centre the whole block of shots and labels in the space under the caption.
+  const y0 = top + (availH - (stacked ? n * (used.h + lab) + (n - 1) * GAP : used.h + lab)) / 2;
 
   for (const [i, shot] of spec.shots.entries()) {
     const img = await loadImage(join(RAW, shot.file));
-    const dst = fit(crop, { x: MARGIN + i * (cellW + GAP), y: top, w: cellW, h: cellH });
+    const box = stacked
+      ? { x: MARGIN, y: y0 + i * (used.h + lab + GAP), w: cell.w, h: used.h }
+      : { x: MARGIN + i * (cell.w + GAP), y: y0, w: cell.w, h: used.h };
+    const dst = fit(crop, box);
     ctx.drawImage(img, crop.x, crop.y, crop.w, crop.h, dst.x, dst.y, dst.w, dst.h);
     ctx.strokeStyle = FRAME;
     ctx.lineWidth = 2;
