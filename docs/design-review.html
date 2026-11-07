@@ -279,6 +279,7 @@ ul{padding-left:20px}li{margin:6px 0;max-width:70ch}
     <li><b>Lasso after insert</b> works when the plugin view is closed first. Geometry has a flag that does it on insert.</li>
     <li><b>Placement by pen</b> works through ordinary React Native touch handling on a transparent root; the page stays visible. A solid rubber band is needed because partial refresh drops dashes.</li>
     <li><b>Recipes round-trip.</b> A JSON tag in the element's user data survives the lasso and drives redraw. Geometry inserted via the geometry API cannot carry one.</li>
+    <li><b>Delete only inside the lasso.</b> Deleting page elements that are not in the current lasso closes the note (7 Nov 2026). Redrawing part of a shape therefore lassoes the whole shape before deleting it.</li>
   </ul>
 </div>
 
