@@ -1,5 +1,5 @@
-import { parseRecipe, serializeRecipe, type Recipe } from '../src/render/recipe';
-import { DEFAULT_STYLE } from '../src/render/style';
+import { gapField, parseRecipe, redrawGap, serializeRecipe, type Recipe } from '../src/render/recipe';
+import { DEFAULT_STYLE, TONE_GAP } from '../src/render/style';
 
 describe('recipe', () => {
   const r: Recipe = { v: 1, shape: 'decision', style: { ...DEFAULT_STYLE, look: 'hand', fill: 'hatch' }, seed: 42 };
@@ -58,5 +58,45 @@ describe('recipe', () => {
     ['json null', 'null'],
   ])('rejects %s', (_, s) => {
     expect(parseRecipe(s as string | null | undefined)).toBeNull();
+  });
+
+  it('round-trips a gap, omitting the key when absent', () => {
+    expect(parseRecipe(serializeRecipe({ ...r, gap: 34 }))).toEqual({ ...r, gap: 34 });
+    expect(serializeRecipe(r)).not.toContain('gap');
+  });
+
+  it.each(['0', '-5', '"wide"', 'null'])('rejects a gap of %s', gap => {
+    expect(parseRecipe(`${serializeRecipe(r).slice(0, -1)},"gap":${gap}}`)).toBeNull();
+  });
+
+  it('records a gap only for hatch and cross', () => {
+    expect(gapField({ ...DEFAULT_STYLE, fill: 'hatch' }, 34)).toEqual({ gap: 34 });
+    expect(gapField({ ...DEFAULT_STYLE, fill: 'cross' }, 34)).toEqual({ gap: 34 });
+    expect(gapField({ ...DEFAULT_STYLE, fill: 'solid' }, 34)).toEqual({});
+    expect(gapField({ ...DEFAULT_STYLE, fill: 'none' }, 34)).toEqual({});
+  });
+
+  describe('redrawGap', () => {
+    const gaps = { light: 135, dark: 34, black: 9 };
+    const hatched: Recipe = { ...r, style: { ...DEFAULT_STYLE, fill: 'hatch', tone: 'dark' }, gap: 18 };
+
+    it("keeps the shape's own gap while the tone is unchanged, even when the setting moved", () => {
+      expect(redrawGap(hatched, hatched.style, gaps)).toBe(18);
+      expect(redrawGap(hatched, { ...hatched.style, fill: 'cross' }, gaps)).toBe(18);
+    });
+
+    it('gives a hatched shape placed before the setting its built-in gap', () => {
+      const { gap: _, ...old } = hatched;
+      expect(redrawGap(old, old.style, gaps)).toBe(TONE_GAP.dark);
+    });
+
+    it('takes the setting for a new tone', () => {
+      expect(redrawGap(hatched, { ...hatched.style, tone: 'black' }, gaps)).toBe(9);
+    });
+
+    it('takes the setting when the shape had no hatch to keep', () => {
+      const plain: Recipe = { ...r, style: { ...DEFAULT_STYLE, fill: 'none', tone: 'dark' } };
+      expect(redrawGap(plain, { ...plain.style, fill: 'hatch' }, gaps)).toBe(34);
+    });
   });
 });

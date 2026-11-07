@@ -256,6 +256,10 @@ describe('renderShape', () => {
       }
     });
 
+    it('uses a gap passed in place of the tone constant', () => {
+      expect(firstGap(renderShape(SHAPES.rectangle, wide, style({ fill: 'hatch', tone: 'dark' }), 1, 45))).toBeCloseTo(45, 0);
+    });
+
     it('puts the same number of lines in a tall box and the same box turned sideways', () => {
       const count = (box: typeof tall) => renderShape(SHAPES.rectangle, box, style({ fill: 'hatch' }), 1).strokes.length;
       expect(Math.abs(count(tall) - count(wide))).toBeLessThanOrEqual(1);

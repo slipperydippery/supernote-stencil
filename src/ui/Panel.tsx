@@ -18,9 +18,11 @@ export type PanelProps = {
   onClose(): void;
   title?: string;
   families?: Family[];
+  /** Shows a settings button in the header when given. */
+  onSettings?(): void;
 };
 
-export default function Panel({ tab, onTab, style, onStyle, selected, onPick, onClose, title, families }: PanelProps) {
+export default function Panel({ tab, onTab, style, onStyle, selected, onPick, onClose, title, families, onSettings }: PanelProps) {
   const visibleFamilies = families ?? FAMILIES;
   // A caller-supplied tab outside its own families list (a stale remembered tab
   // restricted by a narrower `families`) would otherwise render a grid for a
@@ -30,9 +32,16 @@ export default function Panel({ tab, onTab, style, onStyle, selected, onPick, on
     <View style={styles.panel}>
       <View style={styles.header}>
         <Text style={styles.title}>{title ?? 'Stencil'}</Text>
-        <Pressable testID="panel-close" accessibilityRole="button" accessibilityLabel="Close" onPress={onClose} style={styles.close}>
-          <Text style={styles.closeText}>×</Text>
-        </Pressable>
+        <View style={styles.headerButtons}>
+          {onSettings && (
+            <Pressable testID="panel-settings" accessibilityRole="button" accessibilityLabel="Settings" onPress={onSettings} style={styles.textButton}>
+              <Text style={styles.textButtonText}>Settings</Text>
+            </Pressable>
+          )}
+          <Pressable testID="panel-close" accessibilityRole="button" accessibilityLabel="Close" onPress={onClose} style={styles.close}>
+            <Text style={styles.closeText}>×</Text>
+          </Pressable>
+        </View>
       </View>
       <View style={styles.tabs}>
         {visibleFamilies.map(f => (
@@ -84,6 +93,9 @@ const styles = StyleSheet.create({
   title: { fontSize: 22, fontWeight: '600', color: INK },
   close: { width: 36, height: 36, borderWidth: 1, borderColor: INK, borderRadius: 4, alignItems: 'center', justifyContent: 'center' },
   closeText: { fontSize: 22, color: INK },
+  headerButtons: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  textButton: { height: 36, paddingHorizontal: 12, borderWidth: 1, borderColor: INK, borderRadius: 4, justifyContent: 'center' },
+  textButtonText: { fontSize: 16, color: INK },
   tabs: { flexDirection: 'row', borderBottomWidth: 1, borderColor: INK },
   tab: { flex: 1, alignItems: 'center', paddingVertical: 8, borderBottomWidth: 3, borderColor: 'transparent' },
   tabOn: { borderColor: INK },

@@ -11,7 +11,7 @@ jest.mock('../src/render/plan', () => {
 
 import * as dev from '../src/device';
 import { renderShape } from '../src/render/plan';
-import { DEFAULT_STYLE } from '../src/render/style';
+import { DEFAULT_STYLE, TONE_GAP } from '../src/render/style';
 import { SHAPES } from '../src/shapes';
 import PlaceFlow from '../src/ui/PlaceFlow';
 import PlacementLayer from '../src/ui/PlacementLayer';
@@ -51,7 +51,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   jest.spyOn(PixelRatio, 'get').mockReturnValue(2);
   device.log = [];
-  device.settings = { style: DEFAULT_STYLE, lastShape: null, tab: 'basic', armOnOpen: true };
+  device.settings = { style: DEFAULT_STYLE, lastShape: null, tab: 'basic', armOnOpen: true, gaps: TONE_GAP, wrapPadding: 24 };
 });
 
 it('opens the panel when nothing is remembered', async () => {
@@ -89,7 +89,7 @@ it('toggles and persists armOnOpen from the strip', async () => {
 it('persists a tab tap and shows that family', async () => {
   const r = await open();
   await press(r, 'tab-flow');
-  expect(mocked.saveSettings).toHaveBeenLastCalledWith({ style: DEFAULT_STYLE, lastShape: null, tab: 'flow', armOnOpen: true });
+  expect(mocked.saveSettings).toHaveBeenLastCalledWith({ ...device.settings, style: DEFAULT_STYLE, lastShape: null, tab: 'flow', armOnOpen: true });
   expect(has(r, 'cell-decision')).toBe(true);
   expect(has(r, 'cell-rectangle')).toBe(false);
 });
@@ -98,7 +98,7 @@ it('arms the strip on pick and persists the shape', async () => {
   const r = await open();
   await press(r, 'tab-flow');
   await press(r, 'cell-decision');
-  expect(mocked.saveSettings).toHaveBeenLastCalledWith({ style: DEFAULT_STYLE, lastShape: 'decision', tab: 'flow', armOnOpen: true });
+  expect(mocked.saveSettings).toHaveBeenLastCalledWith({ ...device.settings, style: DEFAULT_STYLE, lastShape: 'decision', tab: 'flow', armOnOpen: true });
   expect(has(r, 'tab-flow')).toBe(false);
   expect(has(r, 'strip-icon-decision')).toBe(true);
 });
@@ -107,7 +107,7 @@ it('persists a style chip in the strip and shows it selected', async () => {
   device.settings = { ...device.settings, lastShape: 'rectangle' };
   const r = await open();
   await press(r, 'chip-line-dashed');
-  expect(mocked.saveSettings).toHaveBeenLastCalledWith({ style: { ...DEFAULT_STYLE, line: 'dashed' }, lastShape: 'rectangle', tab: 'basic', armOnOpen: true });
+  expect(mocked.saveSettings).toHaveBeenLastCalledWith({ ...device.settings, style: { ...DEFAULT_STYLE, line: 'dashed' }, lastShape: 'rectangle', tab: 'basic', armOnOpen: true });
   expect(r.root.findAllByProps({ testID: 'chip-line-dashed' })[0].props.accessibilityState).toEqual({ selected: true });
 });
 
@@ -225,4 +225,62 @@ it('finishes pending settings saves before inserting', async () => {
   expect(mocked.insertPlan).not.toHaveBeenCalled();
   await act(async () => release());
   expect(device.log).toEqual(['saveSettings', 'insertPlan', 'selectRect']);
+});
+
+describe('settings screen', () => {
+  it('opens from the panel and returns to it', async () => {
+    const r = await open();
+    await press(r, 'panel-settings');
+    expect(has(r, 'gap-dark-value')).toBe(true);
+    expect(has(r, 'tab-basic')).toBe(false);
+    await press(r, 'settings-back');
+    expect(has(r, 'tab-basic')).toBe(true);
+  });
+
+  it('steps a tone denser and persists it, leaving the other tones', async () => {
+    const r = await open();
+    await press(r, 'panel-settings');
+    await press(r, 'gap-dark-more');
+    expect(mocked.saveSettings).toHaveBeenLastCalledWith({ ...device.settings, gaps: { light: 68, dark: 18, black: 13 } });
+    expect(r.root.findByProps({ testID: 'gap-dark-value' }).props.children).toBe('15 %');
+  });
+
+  it('disables stepping past either end of a ladder', async () => {
+    device.settings = { ...device.settings, gaps: { light: 135, dark: 25, black: 9 }, wrapPadding: 0 };
+    const r = await open();
+    await press(r, 'panel-settings');
+    const disabled = (id: string) => r.root.findAllByProps({ testID: id })[0].props.disabled;
+    expect(disabled('gap-light-less')).toBe(true);
+    expect(disabled('gap-black-more')).toBe(true);
+    expect(disabled('wrap-padding-less')).toBe(true);
+    expect(disabled('gap-dark-less')).toBe(false);
+  });
+
+  it('steps wrap padding and resets everything to defaults', async () => {
+    const r = await open();
+    await press(r, 'panel-settings');
+    await press(r, 'wrap-padding-more');
+    expect(mocked.saveSettings).toHaveBeenLastCalledWith({ ...device.settings, wrapPadding: 36 });
+    expect(r.root.findByProps({ testID: 'wrap-padding-value' }).props.children).toBe('3 mm');
+    await press(r, 'gap-light-less');
+    await press(r, 'settings-reset');
+    expect(mocked.saveSettings).toHaveBeenLastCalledWith({ ...device.settings, gaps: TONE_GAP, wrapPadding: 24 });
+  });
+});
+
+it('hatches at the saved gap and records it in the recipe', async () => {
+  device.settings = { ...device.settings, lastShape: 'rectangle', style: { ...DEFAULT_STYLE, fill: 'hatch' }, gaps: { ...TONE_GAP, dark: 45 } };
+  const r = await open();
+  await gesture(r, [300, 400], [300, 400]);
+  expect((renderShape as jest.Mock).mock.calls[0][4]).toBe(45);
+  const [, , recipe] = mocked.insertPlan.mock.calls[0] as any[];
+  expect(recipe.gap).toBe(45);
+});
+
+it('records no gap for an unhatched shape', async () => {
+  device.settings = { ...device.settings, lastShape: 'rectangle' };
+  const r = await open();
+  await gesture(r, [300, 400], [300, 400]);
+  const [, , recipe] = mocked.insertPlan.mock.calls[0] as any[];
+  expect(recipe).not.toHaveProperty('gap');
 });

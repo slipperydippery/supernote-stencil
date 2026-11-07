@@ -2,16 +2,17 @@ import React, { useEffect, useRef, useState } from 'react';
 import { PixelRatio, StyleSheet, View } from 'react-native';
 import { closeView, currentPage, DEFAULT_SETTINGS, insertPlan, loadSettings, saveSettings, selectRect, type PageCtx, type Settings } from '../device';
 import { renderShape } from '../render/plan';
-import type { Recipe } from '../render/recipe';
+import { gapField, type Recipe } from '../render/recipe';
 import type { Style } from '../render/style';
 import { SHAPES, type Box, type Family, type ShapeDef } from '../shapes';
 import Message from './Message';
 import Panel from './Panel';
 import { defaultBoxAt, fitBox, flipFor } from './placement';
 import PlacementLayer, { type PlaceKind } from './PlacementLayer';
+import SettingsPanel from './SettingsPanel';
 import Strip from './Strip';
 
-type Mode = 'loading' | 'panel' | 'strip' | 'busy' | 'error';
+type Mode = 'loading' | 'panel' | 'settings' | 'strip' | 'busy' | 'error';
 
 export default function PlaceFlow() {
   const [ctx, setCtx] = useState<PageCtx | null>(null);
@@ -64,12 +65,13 @@ export default function PlaceFlow() {
     busy.current = true;
     setMode('busy');
     try {
-      const style = latest.current.style;
+      const { style, gaps } = latest.current;
+      const gap = gaps[style.tone];
       const target = kind === 'tap' ? defaultBoxAt(shape, box, ctx) : fitBox(shape, box);
       const seed = Math.floor(Math.random() * 1_000_000);
       const flip = flipFor(shape, target);
-      const recipe: Recipe = { v: 1, shape: shape.id, style, seed, ...(flip ? { flip } : {}) };
-      const plan = renderShape(shape, target, style, seed);
+      const recipe: Recipe = { v: 1, shape: shape.id, style, seed, ...(flip ? { flip } : {}), ...gapField(style, gap) };
+      const plan = renderShape(shape, target, style, seed, gap);
       await saving.current;
       const bounds = await insertPlan(ctx, plan, recipe);
       // Closes the view and lassoes; JS stops once the view is closed, so nothing follows this.
@@ -95,6 +97,16 @@ export default function PlaceFlow() {
           onStyle={setStyle}
           selected={shape?.id ?? null}
           onPick={pick}
+          onClose={close}
+          onSettings={() => setMode('settings')}
+        />
+      )}
+      {mode === 'settings' && (
+        <SettingsPanel
+          gaps={settings.gaps}
+          wrapPadding={settings.wrapPadding}
+          onChange={change => persist({ ...latest.current, ...change })}
+          onBack={() => setMode('panel')}
           onClose={close}
         />
       )}
