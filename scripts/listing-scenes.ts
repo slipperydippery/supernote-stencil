@@ -205,9 +205,19 @@ function strip(style: Style, id: ShapeId, action?: string): string {
   const h = 64 * R;
   let s = box(x, y, w, h, 6 * R, '#000', R);
   const px = x + 8 * R;
-  s += box(px, y + 7 * R, 64 * R, 50 * R, 4 * R, '#777', R) + `<image href="${ICON[id]}" x="${px + 10 * R}" y="${y + 10 * R}" width="${44 * R}" height="${44 * R}"/>`;
-  s += chips(['weight', 'line', 'fill', 'tone', 'look'], style, px + 74 * R, y + (h - 28 * R) / 2, 32 * R, 24 * R, 10 * R).svg;
-  const marks = action ? [action, '×'] : ['pin', '×'];
+  // The shape tile: preview alone on the redraw strip, preview plus a pinned pin tab (2 dp ink frame) on the place strip.
+  const pinned = !action;
+  const tileW = (pinned ? 101 : 64) * R;
+  const ty = y + 7 * R;
+  s += box(px, ty, tileW, 50 * R, 4 * R, pinned ? '#000' : '#777', pinned ? 2 * R : R) + `<image href="${ICON[id]}" x="${px + 10 * R}" y="${y + 10 * R}" width="${44 * R}" height="${44 * R}"/>`;
+  if (pinned) {
+    const tx = px + tileW - 36 * R;
+    s += `<clipPath id="tile"><rect x="${f1(px)}" y="${f1(ty)}" width="${f1(tileW)}" height="${50 * R}" rx="${4 * R}"/></clipPath>`;
+    s += `<rect x="${f1(tx)}" y="${f1(ty)}" width="${36 * R}" height="${50 * R}" fill="#000" clip-path="url(#tile)"/>`;
+    s += `<image href="${PIN_ON}" x="${f1(tx + 18 * R - 12 * R)}" y="${f1(ty + 25 * R - 12 * R)}" width="${24 * R}" height="${24 * R}"/>`;
+  }
+  s += chips(['weight', 'line', 'fill', 'tone', 'look'], style, px + tileW + 10 * R, y + (h - 28 * R) / 2, 32 * R, 24 * R, 10 * R).svg;
+  const marks = action ? [action, '×'] : ['×'];
   const mark = 40 * R;
   marks.forEach((m, i) => {
     const mx = x + w - 8 * R - mark - (marks.length - 1 - i) * (mark + 10 * R);
@@ -215,9 +225,7 @@ function strip(style: Style, id: ShapeId, action?: string): string {
     const dark = m !== '×';
     s += box(mx, my, mark, mark, 4 * R, '#000', R, dark ? '#000' : '#fff');
     const c = { x: mx + mark / 2, y: my + mark / 2 };
-    if (m === 'pin') {
-      s += `<image href="${PIN_ON}" x="${c.x - 12 * R}" y="${c.y - 12 * R}" width="${24 * R}" height="${24 * R}"/>`;
-    } else if (m === 'check') {
+    if (m === 'check') {
       s += `<path d="M${c.x - 9 * R} ${c.y} l${6 * R} ${7 * R} l${12 * R} ${-14 * R}" fill="none" stroke="#fff" stroke-width="${3 * R}" stroke-linecap="round" stroke-linejoin="round"/>`;
     } else {
       s += label(c.x, c.y, m, 22 * R);
