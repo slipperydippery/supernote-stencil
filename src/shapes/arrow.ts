@@ -52,21 +52,21 @@ export const ARROW: ShapeDef[] = [
   {
     id: 'archArrow', family: 'arrow', label: 'Arch arrow', closed: false,
     defaultSize: { w: 480, h: 240 }, keepAspect: false,
-    // Rises steeply from the frame's bottom-left, levels off into the head at the
-    // top-right: at(f, t, 1 - sin(t·π/2)). Not pen-down-to-pen-up like the other
-    // directional arrows (elbowArrow, etc.) — shaft[0] is (left, bottom), shaft's
-    // last point is (right, top), regardless of drag direction, so it always reads
-    // as climbing left-to-right. No fitBox special case needed for that: the box's
-    // own left/right/top/bottom already carry the drag reversal (see flipFor in
-    // src/ui/placement.ts), and this outline is a pure function of the box used
-    // identically by both placement and redraw, so flip stays consistent either way
-    // (GH-6 fixed a bug from special-casing only one of those two call sites).
+    // Pen-down-to-pen-up, like elbowArrow: at(f, 0, 0) is shaft[0], at(f, 1, 1) is
+    // the tip. Steep off pen-down, levels off into the head at pen-up.
+    // box.top/box.bottom are literally pen-down.y/pen-up.y (see onPlace in
+    // PlacementLayer.tsx), not "smaller"/"larger" value — an outline that maps
+    // t=0 to box.bottom instead of box.top runs backwards on the y-axis for every
+    // drag, not just reversed ones, since x (t=0 -> box.left, always pen-down.x)
+    // stays correct regardless. A tap places at the default box, which is
+    // normalised (top < bottom), so a tap-placed arch arrow reads top-left to
+    // bottom-right; only a literal bottom-left-to-top-right drag reads that way.
     outline: box => {
       const f = frame(box);
       const p: Pt[] = [];
       for (let i = 0; i <= 40; i++) {
         const t = i / 40;
-        p.push(at(f, t, 1 - Math.sin((t * Math.PI) / 2)));
+        p.push(at(f, t, Math.sin((t * Math.PI) / 2)));
       }
       const a = Math.atan2(p[40].y - p[39].y, p[40].x - p[39].x);
       return [p, head(p[40], a, f)];
@@ -75,18 +75,14 @@ export const ARROW: ShapeDef[] = [
   {
     id: 'scoopArrow', family: 'arrow', label: 'Scoop arrow', closed: false,
     defaultSize: { w: 480, h: 240 }, keepAspect: false,
-    // The same bottom-left-to-top-right span as archArrow, bowed the other way:
-    // flat off the frame's bottom-left, steepening into the head at the top-right.
-    // sin((1-t)·π/2) is archArrow's 1 - sin(t·π/2) with the easing mirrored in t
-    // (so it shares archArrow's exact endpoints, only the curve's shape differs),
-    // written to only ever evaluate Math.sin at 0 and π/2 — both round exactly,
-    // where Math.cos(Math.PI / 2) does not.
+    // The same pen-down-to-pen-up span as archArrow, bowed the other way: flat off
+    // pen-down, steepening into the head at pen-up.
     outline: box => {
       const f = frame(box);
       const p: Pt[] = [];
       for (let i = 0; i <= 40; i++) {
         const t = i / 40;
-        p.push(at(f, t, Math.sin(((1 - t) * Math.PI) / 2)));
+        p.push(at(f, t, 1 - Math.sin(((1 - t) * Math.PI) / 2)));
       }
       const a = Math.atan2(p[40].y - p[39].y, p[40].x - p[39].x);
       return [p, head(p[40], a, f)];

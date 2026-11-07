@@ -317,8 +317,8 @@ ul{padding-left:20px}li{margin:6px 0;max-width:70ch}
       {id:'down',name:'arrow down',size:'300',closed:false,lines:()=>[[[W/2,M],[W/2,H-M]],head(W/2,H-M,Math.PI/2,18)]},
       {id:'dbl',name:'double arrow',size:'480',closed:false,lines:()=>[[[M,H/2],[W-M,H/2]],head(W-M,H/2,0,18),head(M,H/2,Math.PI,18)]},
       {id:'elbow',name:'elbow arrow',size:'480 × 240',closed:false,lines:()=>[[[M,M+10],[W/2,M+10],[W/2,H-M-10],[W-M,H-M-10]],head(W-M,H-M-10,0,18)]},
-      {id:'arch',name:'arch arrow',size:'480 × 240',closed:false,lines:()=>{const p=[];for(let i=0;i<=40;i++){const t=i/40;p.push([M+(W-2*M)*t,H-M-10-(H-2*M-20)*Math.sin(t*Math.PI/2)])}const a=Math.atan2(p[40][1]-p[39][1],p[40][0]-p[39][0]);return [p,head(W-M,M+10,a,18)]}},
-      {id:'scoop',name:'scoop arrow',size:'480 × 240',closed:false,lines:()=>{const p=[];for(let i=0;i<=40;i++){const t=i/40;p.push([M+(W-2*M)*t,H-M-10-(H-2*M-20)*(1-Math.sin((1-t)*Math.PI/2))])}const a=Math.atan2(p[40][1]-p[39][1],p[40][0]-p[39][0]);return [p,head(W-M,M+10,a,18)]}},
+      {id:'arch',name:'arch arrow',size:'480 × 240',closed:false,lines:()=>{const p=[];for(let i=0;i<=40;i++){const t=i/40;p.push([M+(W-2*M)*t,(M+10)+(H-2*M-20)*Math.sin(t*Math.PI/2)])}const a=Math.atan2(p[40][1]-p[39][1],p[40][0]-p[39][0]);return [p,head(W-M,H-M-10,a,18)]}},
+      {id:'scoop',name:'scoop arrow',size:'480 × 240',closed:false,lines:()=>{const p=[];for(let i=0;i<=40;i++){const t=i/40;p.push([M+(W-2*M)*t,(M+10)+(H-2*M-20)*(1-Math.sin((1-t)*Math.PI/2))])}const a=Math.atan2(p[40][1]-p[39][1],p[40][0]-p[39][0]);return [p,head(W-M,H-M-10,a,18)]}},
     ]
   };
 
