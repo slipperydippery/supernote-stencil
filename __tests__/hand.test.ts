@@ -1,4 +1,4 @@
-import { handDrawnOutline, peakThickness, pressureForFraction, pressureFromWidth, splitLong, splitStrokes, type XY } from '../src/render/hand';
+import { handDrawnOutline, peakThickness, pressureForFraction, pressureFromWidth, splitStrokes, type XY } from '../src/render/hand';
 
 describe('pressure mapping', () => {
   it('interpolates the measured curve and clamps at both ends', () => {
@@ -22,11 +22,6 @@ describe('stroke splitting', () => {
 
   it('splits a rectangle at its four corners', () => {
     expect(splitStrokes(rect, true)).toHaveLength(4);
-  });
-
-  it('splits long runs into equal pieces', () => {
-    const run: XY[] = Array.from({ length: 101 }, (_, i) => [i * 3, 0]);
-    expect(splitLong(run, 130)).toHaveLength(3);
   });
 
   it('is deterministic for a seed', () => {

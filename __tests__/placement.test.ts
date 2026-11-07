@@ -22,6 +22,15 @@ describe('defaultBoxAt', () => {
     expect(defaultBoxAt(SHAPES.rectangle, point(10, 2550), ctx)).toEqual({ left: 0, top: 2320, right: 480, bottom: 2560 });
     expect(defaultBoxAt(SHAPES.rectangle, point(1915, 5), ctx)).toEqual({ left: 1440, top: 0, right: 1920, bottom: 240 });
   });
+
+  it('swaps top and bottom for rising shapes, so a tap places them bottom-left to top-right', () => {
+    for (const def of [SHAPES.archArrow, SHAPES.scoopArrow]) {
+      expect(defaultBoxAt(def, point(600, 800), ctx)).toEqual({ left: 360, top: 920, right: 840, bottom: 680 });
+      const shaft = renderShape(def, defaultBoxAt(def, point(600, 800), ctx), DEFAULT_STYLE, 1).geometries[0].points;
+      expect(shaft[0]).toEqual({ x: 360, y: 920 });
+      expect(shaft[shaft.length - 1]).toEqual({ x: 840, y: 680 });
+    }
+  });
 });
 
 describe('fitBox', () => {
@@ -43,17 +52,17 @@ describe('fitBox', () => {
     const dragLeft = { left: 800, top: 300, right: 200, bottom: 304 };
     expect(fitBox(SHAPES.arrow, dragLeft)).toEqual({ left: 800, top: 300, right: 200, bottom: 304 });
     expect(fitBox(SHAPES.doubleArrow, dragLeft)).toEqual({ left: 200, top: 300, right: 800, bottom: 304 });
-    expect(fitBox(SHAPES.line, dragLeft)).toEqual({ left: 200, top: 300, right: 800, bottom: 304 });
     expect(fitBox(SHAPES.arrowDown, { left: 104, top: 900, right: 100, bottom: 300 })).toEqual({ left: 104, top: 900, right: 100, bottom: 300 });
   });
 
-  it('runs elbow and curved arrows from pen-down to the tip at pen-up', () => {
+  it('runs elbow, arch and scoop arrows from pen-down to the tip at pen-up', () => {
     const drags = [
       { left: 800, top: 600, right: 200, bottom: 300 },
       { left: 200, top: 300, right: 800, bottom: 600 },
       { left: 200, top: 600, right: 800, bottom: 300 },
+      { left: 800, top: 300, right: 200, bottom: 600 },
     ];
-    for (const def of [SHAPES.elbowArrow, SHAPES.curvedArrow]) {
+    for (const def of [SHAPES.elbowArrow, SHAPES.archArrow, SHAPES.scoopArrow]) {
       for (const d of drags) {
         const shaft = renderShape(def, fitBox(def, d), DEFAULT_STYLE, 1).geometries[0].points;
         expect([def.id, shaft[0]]).toEqual([def.id, { x: d.left, y: d.top }]);
@@ -96,8 +105,7 @@ describe('flipFor', () => {
     expect(flipFor(SHAPES.elbowArrow, { left: 800, top: 600, right: 200, bottom: 300 })).toEqual({ x: true, y: true });
   });
 
-  it('treats line and doubleArrow as non-directional: no flip even when reversed', () => {
-    expect(flipFor(SHAPES.line, { left: 800, top: 300, right: 200, bottom: 300 })).toBeUndefined();
+  it('treats doubleArrow as non-directional: no flip even when reversed', () => {
     expect(flipFor(SHAPES.doubleArrow, { left: 800, top: 300, right: 200, bottom: 300 })).toBeUndefined();
   });
 });
@@ -109,15 +117,26 @@ describe('redraw direction fidelity', () => {
   });
 
   it.each([
-    ['unreversed', { left: 200, top: 300, right: 800, bottom: 600 }],
-    ['x-reversed', { left: 800, top: 300, right: 200, bottom: 600 }],
-    ['y-reversed', { left: 200, top: 600, right: 800, bottom: 300 }],
-    ['both axes reversed', { left: 800, top: 600, right: 200, bottom: 300 }],
-  ])('a curvedArrow redraws pointing the same way it was dragged (%s)', (_, dragged) => {
-    const placed = renderShape(SHAPES.curvedArrow, fitBox(SHAPES.curvedArrow, dragged), DEFAULT_STYLE, 1);
-    const flip = flipFor(SHAPES.curvedArrow, dragged);
+    ['archArrow', SHAPES.archArrow, 'unreversed', { left: 200, top: 300, right: 800, bottom: 600 }],
+    ['archArrow', SHAPES.archArrow, 'x-reversed', { left: 800, top: 300, right: 200, bottom: 600 }],
+    ['archArrow', SHAPES.archArrow, 'y-reversed', { left: 200, top: 600, right: 800, bottom: 300 }],
+    ['archArrow', SHAPES.archArrow, 'both axes reversed', { left: 800, top: 600, right: 200, bottom: 300 }],
+    ['scoopArrow', SHAPES.scoopArrow, 'unreversed', { left: 200, top: 300, right: 800, bottom: 600 }],
+    ['scoopArrow', SHAPES.scoopArrow, 'x-reversed', { left: 800, top: 300, right: 200, bottom: 600 }],
+    ['scoopArrow', SHAPES.scoopArrow, 'y-reversed', { left: 200, top: 600, right: 800, bottom: 300 }],
+    ['scoopArrow', SHAPES.scoopArrow, 'both axes reversed', { left: 800, top: 600, right: 200, bottom: 300 }],
+  ])('a %s redraws pointing the same way it was dragged (%s)', (_, def, __, dragged) => {
+    const placed = renderShape(def, fitBox(def, dragged), DEFAULT_STYLE, 1);
+    const flip = flipFor(def, dragged);
     // The lasso always hands back a normalised box, as plan.bounds does here.
-    const redrawn = renderShape(SHAPES.curvedArrow, applyFlip(placed.bounds, flip), DEFAULT_STYLE, 1);
+    const redrawn = renderShape(def, applyFlip(placed.bounds, flip), DEFAULT_STYLE, 1);
     expect(direction(redrawn.geometries[0].points)).toEqual(direction(placed.geometries[0].points));
+  });
+
+  it.each([['archArrow', SHAPES.archArrow], ['scoopArrow', SHAPES.scoopArrow]])('a tapped %s redraws still rising', (_, def) => {
+    const target = defaultBoxAt(def, point(600, 800), ctx);
+    const placed = renderShape(def, target, DEFAULT_STYLE, 1);
+    const redrawn = renderShape(def, applyFlip(placed.bounds, flipFor(def, target)), DEFAULT_STYLE, 1);
+    expect(direction(redrawn.geometries[0].points)).toEqual({ x: 1, y: -1 });
   });
 });

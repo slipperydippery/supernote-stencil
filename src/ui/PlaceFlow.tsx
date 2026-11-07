@@ -67,7 +67,7 @@ export default function PlaceFlow() {
       const style = latest.current.style;
       const target = kind === 'tap' ? defaultBoxAt(shape, box, ctx) : fitBox(shape, box);
       const seed = Math.floor(Math.random() * 1_000_000);
-      const flip = kind === 'drag' ? flipFor(shape, box) : undefined;
+      const flip = flipFor(shape, target);
       const recipe: Recipe = { v: 1, shape: shape.id, style, seed, ...(flip ? { flip } : {}) };
       const plan = renderShape(shape, target, style, seed);
       await saving.current;

@@ -5,7 +5,7 @@
  */
 import type { Box, Pt, ShapeDef, ShapeId } from '../shapes/types';
 import { dashSamples } from './dashes';
-import { fillStrokes } from './fills';
+import { fillStrokes, headStrokes } from './fills';
 import { handDrawnOutline, LOCKED, peakThickness, pressureFromWidth, resample, splitStrokes, toXY } from './hand';
 import { firmwareWidth, WEIGHT_WIDTH, type Style } from './style';
 
@@ -75,10 +75,9 @@ function cleanDashed(def: ShapeDef, outlines: Pt[][], style: Style, width: numbe
 
 function handStrokes(def: ShapeDef, outlines: Pt[][], style: Style, width: number, seed: number): StrokeSpec[] {
   const peak = peakThickness(width, LOCKED.swing);
-  const penLen = ELLIPSES.has(def.id) ? Infinity : LOCKED.penLen;
   const out: StrokeSpec[] = [];
   outlines.forEach((outline, i) => {
-    const pens = handDrawnOutline(toXY(outline), def.closed, partSeed(seed, i), width, penLen);
+    const pens = handDrawnOutline(toXY(outline), def.closed, partSeed(seed, i), width);
     pens.forEach((pen, j) => {
       const openEnd = !def.closed && j === pens.length - 1;
       for (const s of dashSamples(pen, style.line, width, openEnd)) {
@@ -120,6 +119,11 @@ export function renderShape(def: ShapeDef, box: Box, style: Style, seed: number)
 
   if (def.closed && style.fill !== 'none') {
     strokes.push(...fillStrokes(outlines[0], style, width, partSeed(seed, FILL_PART)));
+  }
+  if (!def.closed) {
+    for (const h of outlines.slice(1)) {
+      strokes.push(...headStrokes([...h, h[0]]));
+    }
   }
   if (style.look === 'clean') {
     if (style.line === 'solid') {
