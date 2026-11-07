@@ -8,6 +8,8 @@
 
 - Strip: the arm-on-open toggle is a pin instead of a check box, so it no longer reads as OK next to the close button (GH-28).
 
+- Redraw: other ink caught in the lasso is left alone and only the shape's own elements are replaced; lassoing part of a shape redraws the whole shape; a selection holding two Stencil shapes is refused with a notice and nothing is touched (GH-30).
+
 ## 1.0.0 — 2026-11-06
 
 - Shapes and renderers: shape definitions, style and recipe, clean and hand-drawn renderers, fills and dashes, the pressure mapping, and the committed PNG icons (GH-2).
