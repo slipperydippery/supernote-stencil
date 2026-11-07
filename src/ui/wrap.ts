@@ -3,6 +3,9 @@ import type { Box, ShapeDef } from '../shapes';
 /** Manta px; the caller scales by ctx.unit. */
 export const WRAP_PADDING = 24;
 
+/** The paddings a setting can step through: 0–8 mm at the Manta's 300 ppi. */
+export const PADDING_STEPS = [0, 12, 24, 36, 48, 72, 96] as const;
+
 function grow(b: Box, delta: { x: number; y: number }): Box {
   return { left: b.left - delta.x, top: b.top - delta.y, right: b.right + delta.x, bottom: b.bottom + delta.y };
 }

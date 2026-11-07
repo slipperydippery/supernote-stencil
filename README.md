@@ -31,6 +31,15 @@ Tap the page to place the shape at its default size under the pen, or drag to re
 
 Lasso a handwritten selection, then tap **Stencil** on the lasso toolbar. The panel opens expanded over the selection's box; tap a shape to wrap it at once — no strip, no page tap.
 
+### Settings
+
+**Settings** in the shape panel's header opens two settings, each stepped with − and +:
+
+- **Hatch spacing** per tone, as ink coverage (1–66 % in 1 % steps, default 4 / 11 / 21 %), with a page-scale sample of the line spacing.
+- **Wrap padding**, the margin between a wrapped selection and its shape (0–8 mm, default 2 mm).
+
+A hatched shape records the spacing it was drawn with, so changing the setting never re-spaces shapes already on the page. Redraw keeps that spacing while the tone is unchanged; picking another tone takes the current setting.
+
 ### Redraw
 
 Lasso a placed Stencil shape, pull the native resize handle to the size you want, then tap **Stencil** on the lasso toolbar. The strip reappears armed with that shape's recipe — restyle if you like, then tap the check mark. The degraded ink is deleted and the shape is rendered fresh into the lasso box.
@@ -42,7 +51,7 @@ Five chip groups set the style of the next insert and are remembered across sess
 - **Weight** — thin, normal, thick: stroke width.
 - **Line** — solid, dashed, dotted: dashes render as separate strokes, so a dashed shape is several elements that redraw together.
 - **Fill** — none, solid, hatch, cross: interior fill, drawn as extra strokes.
-- **Tone** — light, dark, black: the grey of a solid fill, or the spacing of the hatch lines (68, 25 and 13 px). Spacing is a constant, not a share of the box, so one style reads the same on every size.
+- **Tone** — light, dark, black: the grey of a solid fill, or the spacing of the hatch lines (about 68, 25 and 13 px by default; see Settings). Spacing is a constant, not a share of the box, so one style reads the same on every size.
 - **Look** — clean, hand: constant-width geometry, or a hand-drawn stroke with a pressure-mapped width profile.
 
 ## Limitations and deferred work

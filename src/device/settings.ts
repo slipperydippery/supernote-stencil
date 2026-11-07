@@ -1,13 +1,15 @@
 import { FileUtils, PluginManager } from 'sn-plugin-lib';
-import { DEFAULT_STYLE, readStyle, STYLE_KEYS, type Style } from '../render/style';
+import { COVERAGE_MAX, COVERAGE_MIN, DEFAULT_STYLE, readStyle, STYLE_KEYS, TONE_COVERAGE, TONES, type Style, type Tone } from '../render/style';
 import { FAMILIES, SHAPES, type Family, type ShapeId } from '../shapes';
+import { PADDING_STEPS, WRAP_PADDING } from '../ui/wrap';
 
-export type Settings = { style: Style; lastShape: ShapeId | null; tab: Family; armOnOpen: boolean };
+/** `coverage` is the hatch ink coverage per tone in percent, `wrapPadding` the wrap margin in Manta px. */
+export type Settings = { style: Style; lastShape: ShapeId | null; tab: Family; armOnOpen: boolean; coverage: Record<Tone, number>; wrapPadding: number };
 
-export const DEFAULT_SETTINGS: Settings = { style: DEFAULT_STYLE, lastShape: null, tab: 'basic', armOnOpen: true };
+export const DEFAULT_SETTINGS: Settings = { style: DEFAULT_STYLE, lastShape: null, tab: 'basic', armOnOpen: true, coverage: TONE_COVERAGE, wrapPadding: WRAP_PADDING };
 
 type Key = keyof Settings;
-const KEYS: Key[] = ['style', 'lastShape', 'tab', 'armOnOpen'];
+const KEYS: Key[] = ['style', 'lastShape', 'tab', 'armOnOpen', 'coverage', 'wrapPadding'];
 
 function encode(s: Settings, key: Key): string {
   switch (key) {
@@ -20,6 +22,10 @@ function encode(s: Settings, key: Key): string {
       return s.tab;
     case 'armOnOpen':
       return s.armOnOpen ? 'on' : 'off';
+    case 'coverage':
+      return TONES.map(t => s.coverage[t]).join('-');
+    case 'wrapPadding':
+      return String(s.wrapPadding);
   }
 }
 
@@ -42,6 +48,18 @@ function decode(out: Settings, key: Key, raw: string): void {
     case 'armOnOpen':
       out.armOnOpen = raw !== 'off';
       return;
+    case 'coverage': {
+      // All three or none: a half-read record would mix the user's tones with defaults.
+      const parts = raw.split('-').map(Number);
+      const ok = parts.length === TONES.length && parts.every(c => Number.isInteger(c) && c >= COVERAGE_MIN && c <= COVERAGE_MAX);
+      out.coverage = ok ? (Object.fromEntries(TONES.map((t, i) => [t, parts[i]])) as Record<Tone, number>) : { ...TONE_COVERAGE };
+      return;
+    }
+    case 'wrapPadding': {
+      const n = Number(raw);
+      out.wrapPadding = (PADDING_STEPS as readonly number[]).includes(n) ? n : WRAP_PADDING;
+      return;
+    }
   }
 }
 
@@ -63,7 +81,7 @@ function leafName(entry: unknown): string {
 }
 
 export async function loadSettings(): Promise<Settings> {
-  const settings: Settings = { ...DEFAULT_SETTINGS, style: { ...DEFAULT_STYLE } };
+  const settings: Settings = { ...DEFAULT_SETTINGS, style: { ...DEFAULT_STYLE }, coverage: { ...TONE_COVERAGE } };
   try {
     const dir = await settingsDir();
     if (!dir || !(await FileUtils.exists(dir))) {

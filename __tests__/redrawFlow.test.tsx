@@ -11,7 +11,7 @@ jest.mock('../src/render/plan', () => {
 import * as dev from '../src/device';
 import { renderShape } from '../src/render/plan';
 import type { Recipe } from '../src/render/recipe';
-import { DEFAULT_STYLE } from '../src/render/style';
+import { DEFAULT_STYLE, hatchGap, TONE_GAP } from '../src/render/style';
 import RedrawFlow from '../src/ui/RedrawFlow';
 
 const mocked = dev as unknown as ReturnType<typeof deviceMock>;
@@ -43,6 +43,7 @@ const press = async (r: ReactTestRenderer, testID: string) => {
 beforeEach(() => {
   jest.clearAllMocks();
   device.log = [];
+  device.settings = { ...device.settings, coverage: { light: 2, dark: 8, black: 30 } };
 });
 
 it('shows the strip armed with the recipe shape and style, with an apply mark', async () => {
@@ -83,4 +84,32 @@ it('closes the view from the strip without replacing anything', async () => {
   await press(r, 'strip-close');
   expect(mocked.closeView).toHaveBeenCalled();
   expect(mocked.replaceLasso).not.toHaveBeenCalled();
+});
+
+it("keeps the shape's recorded gap when the tone is unchanged", async () => {
+  const r = await open(selection({ recipe: { ...RECIPE, style: { ...DEFAULT_STYLE, fill: 'hatch' }, gap: 18 } }));
+  await press(r, 'strip-action');
+  expect((renderShape as jest.Mock).mock.calls[0][4]).toBe(18);
+  expect((mocked.replaceLasso.mock.calls[0] as any[])[2].gap).toBe(18);
+});
+
+it('takes the saved gap for a new tone', async () => {
+  const r = await open(selection({ recipe: { ...RECIPE, style: { ...DEFAULT_STYLE, fill: 'hatch' }, gap: 18 } }));
+  await press(r, 'chip-tone-black');
+  await press(r, 'strip-action');
+  expect((renderShape as jest.Mock).mock.calls[0][4]).toBe(hatchGap(30));
+  expect((mocked.replaceLasso.mock.calls[0] as any[])[2].gap).toBe(hatchGap(30));
+});
+
+it('drops the gap when the fill no longer hatches', async () => {
+  const r = await open(selection({ recipe: { ...RECIPE, style: { ...DEFAULT_STYLE, fill: 'hatch' }, gap: 18 } }));
+  await press(r, 'chip-fill-solid');
+  await press(r, 'strip-action');
+  expect((mocked.replaceLasso.mock.calls[0] as any[])[2]).not.toHaveProperty('gap');
+});
+
+it('gives a hatched shape from before the setting its built-in gap', async () => {
+  const r = await open(selection({ recipe: { ...RECIPE, style: { ...DEFAULT_STYLE, fill: 'hatch' } } }));
+  await press(r, 'strip-action');
+  expect((renderShape as jest.Mock).mock.calls[0][4]).toBe(TONE_GAP.dark);
 });

@@ -5,7 +5,7 @@ import { device, deviceMock } from '../test/device-mock';
 jest.mock('../src/device', () => require('../test/device-mock').deviceMock());
 
 import * as dev from '../src/device';
-import { DEFAULT_STYLE } from '../src/render/style';
+import { DEFAULT_STYLE, hatchGap, TONE_COVERAGE } from '../src/render/style';
 import LassoFlow from '../src/ui/LassoFlow';
 
 const mocked = dev as unknown as ReturnType<typeof deviceMock>;
@@ -31,7 +31,7 @@ const press = async (r: ReactTestRenderer, testID: string) => {
 beforeEach(() => {
   jest.clearAllMocks();
   device.log = [];
-  device.settings = { style: DEFAULT_STYLE, lastShape: null, tab: 'basic', armOnOpen: true };
+  device.settings = { style: DEFAULT_STYLE, lastShape: null, tab: 'basic', armOnOpen: true, coverage: TONE_COVERAGE, wrapPadding: 24 };
   mocked.readLasso.mockResolvedValue({ rect: RECT, liveRect: RECT, recipe: null, count: 3, recipes: 0 });
 });
 
@@ -64,7 +64,15 @@ it('inserts around the lasso rect and selects shape and content together on pick
   expect(plan.bounds).toEqual({ left: 76, top: 76, right: 324, bottom: 224 });
   expect(recipe).toMatchObject({ v: 1, shape: 'rounded', style: DEFAULT_STYLE });
   expect(mocked.selectRect).toHaveBeenCalledWith({ left: 76, top: 76, right: 324, bottom: 224 });
-  expect(mocked.saveSettings).toHaveBeenLastCalledWith({ style: DEFAULT_STYLE, lastShape: 'rounded', tab: 'basic', armOnOpen: true });
+  expect(mocked.saveSettings).toHaveBeenLastCalledWith({ ...device.settings, style: DEFAULT_STYLE, lastShape: 'rounded', tab: 'basic', armOnOpen: true });
+});
+
+it('pads the wrap by the saved setting', async () => {
+  device.settings = { ...device.settings, wrapPadding: 0 };
+  const r = await open();
+  await press(r, 'cell-rounded');
+  const [, plan] = mocked.insertPlan.mock.calls[0] as any[];
+  expect(plan.bounds).toEqual({ left: 100, top: 100, right: 300, bottom: 200 });
 });
 
 it('closes the view from the wrap panel', async () => {

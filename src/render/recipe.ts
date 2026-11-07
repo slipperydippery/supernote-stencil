@@ -1,11 +1,16 @@
 import { SHAPES, type ShapeId } from '../shapes';
-import { readStyle, type Style } from './style';
+import { readStyle, TONE_GAP, type Style, type Tone } from './style';
 
-export type Recipe = { v: 1; shape: ShapeId; style: Style; seed: number; flip?: { x?: boolean; y?: boolean } };
+/**
+ * `gap` is the hatch spacing the shape was drawn with, so a later change to
+ * the setting does not re-space it on redraw. Absent on unhatched shapes and
+ * on shapes placed before the setting existed, which used TONE_GAP.
+ */
+export type Recipe = { v: 1; shape: ShapeId; style: Style; seed: number; flip?: { x?: boolean; y?: boolean }; gap?: number };
 
 export function serializeRecipe(r: Recipe): string {
   const { weight, line, fill, tone, look } = r.style;
-  const out: { v: 1; shape: ShapeId; style: Style; seed: number; flip?: { x?: boolean; y?: boolean } } = {
+  const out: Recipe = {
     v: r.v,
     shape: r.shape,
     style: { weight, line, fill, tone, look },
@@ -14,7 +19,28 @@ export function serializeRecipe(r: Recipe): string {
   if (r.flip?.x || r.flip?.y) {
     out.flip = { ...(r.flip.x ? { x: true } : {}), ...(r.flip.y ? { y: true } : {}) };
   }
+  if (r.gap !== undefined) {
+    out.gap = r.gap;
+  }
   return JSON.stringify(out);
+}
+
+const hatched = (style: Style) => style.fill === 'hatch' || style.fill === 'cross';
+
+/** The recipe field for a gap: only hatch and cross have spacing to remember. */
+export function gapField(style: Style, gap: number): Pick<Recipe, 'gap'> {
+  return hatched(style) ? { gap } : {};
+}
+
+/**
+ * Redraw keeps a hatched shape's own spacing while its tone is unchanged; a
+ * new tone, or a shape that had no hatch, takes the current setting.
+ */
+export function redrawGap(recipe: Recipe, style: Style, gaps: Record<Tone, number>): number {
+  if (style.tone === recipe.style.tone && hatched(recipe.style)) {
+    return recipe.gap ?? TONE_GAP[style.tone];
+  }
+  return gaps[style.tone];
 }
 
 export function parseRecipe(s: string | null | undefined): Recipe | null {
@@ -48,11 +74,15 @@ export function parseRecipe(s: string | null | undefined): Recipe | null {
     }
     flip = { ...(o.flip.x !== undefined ? { x: o.flip.x } : {}), ...(o.flip.y !== undefined ? { y: o.flip.y } : {}) };
   }
+  if (o.gap !== undefined && !(typeof o.gap === 'number' && o.gap > 0 && Number.isFinite(o.gap))) {
+    return null;
+  }
   return {
     v: 1,
     shape: o.shape,
     style,
     seed: o.seed,
     ...(flip ? { flip } : {}),
+    ...(o.gap !== undefined ? { gap: o.gap } : {}),
   };
 }
