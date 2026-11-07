@@ -217,15 +217,18 @@ function strip(style: Style, id: ShapeId, action?: string): string {
     s += `<image href="${PIN_ON}" x="${f1(tx + 18 * R - 12 * R)}" y="${f1(ty + 25 * R - 12 * R)}" width="${24 * R}" height="${24 * R}"/>`;
   }
   s += chips(['weight', 'line', 'fill', 'tone', 'look'], style, px + tileW + 10 * R, y + (h - 28 * R) / 2, 32 * R, 24 * R, 10 * R).svg;
-  const marks = action ? [action, '×'] : ['×'];
+  // The redraw strip: bin, check, close. The place strip: close only.
+  const marks = action ? ['bin', action, '×'] : ['×'];
   const mark = 40 * R;
   marks.forEach((m, i) => {
     const mx = x + w - 8 * R - mark - (marks.length - 1 - i) * (mark + 10 * R);
     const my = y + (h - mark) / 2;
-    const dark = m !== '×';
+    const dark = m !== '×' && m !== 'bin';
     s += box(mx, my, mark, mark, 4 * R, '#000', R, dark ? '#000' : '#fff');
     const c = { x: mx + mark / 2, y: my + mark / 2 };
-    if (m === 'check') {
+    if (m === 'bin') {
+      s += `<path transform="translate(${f1(c.x - 12 * R)} ${f1(c.y - 12 * R)}) scale(${R})" d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" fill="#000"/>`;
+    } else if (m === 'check') {
       s += `<path d="M${c.x - 9 * R} ${c.y} l${6 * R} ${7 * R} l${12 * R} ${-14 * R}" fill="none" stroke="#fff" stroke-width="${3 * R}" stroke-linecap="round" stroke-linejoin="round"/>`;
     } else {
       s += label(c.x, c.y, m, 22 * R);

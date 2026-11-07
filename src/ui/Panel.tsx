@@ -20,9 +20,11 @@ export type PanelProps = {
   families?: Family[];
   /** Shows a settings button in the header when given. */
   onSettings?(): void;
+  /** Shows an undo button in the header when given: PlaceFlow passes it while the last placed shape can be taken back. */
+  onUndo?(): void;
 };
 
-export default function Panel({ tab, onTab, style, onStyle, selected, onPick, onClose, title, families, onSettings }: PanelProps) {
+export default function Panel({ tab, onTab, style, onStyle, selected, onPick, onClose, title, families, onSettings, onUndo }: PanelProps) {
   const visibleFamilies = families ?? FAMILIES;
   // A caller-supplied tab outside its own families list (a stale remembered tab
   // restricted by a narrower `families`) would otherwise render a grid for a
@@ -33,6 +35,11 @@ export default function Panel({ tab, onTab, style, onStyle, selected, onPick, on
       <View style={styles.header}>
         <Text style={styles.title}>{title ?? 'Stencil'}</Text>
         <View style={styles.headerButtons}>
+          {onUndo && (
+            <Pressable testID="panel-undo" accessibilityRole="button" accessibilityLabel="Undo last placement" onPress={onUndo} style={styles.textButton}>
+              <Text style={styles.textButtonText}>Undo last</Text>
+            </Pressable>
+          )}
           {onSettings && (
             <Pressable testID="panel-settings" accessibilityRole="button" accessibilityLabel="Settings" onPress={onSettings} style={styles.textButton}>
               <Text style={styles.textButtonText}>Settings</Text>

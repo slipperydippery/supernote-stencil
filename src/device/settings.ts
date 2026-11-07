@@ -80,50 +80,56 @@ function leafName(entry: unknown): string {
   return path.replace(/\/+$/, '').split('/').pop() ?? '';
 }
 
-export async function loadSettings(): Promise<Settings> {
-  const settings: Settings = { ...DEFAULT_SETTINGS, style: { ...DEFAULT_STYLE }, coverage: { ...TONE_COVERAGE } };
+/** The stored value of one key, or null when nothing is stored or the device refuses to read. */
+export async function readKey(key: string): Promise<string | null> {
   try {
     const dir = await settingsDir();
-    if (!dir || !(await FileUtils.exists(dir))) {
-      return settings;
+    if (!dir || !(await FileUtils.exists(`${dir}/${key}`))) {
+      return null;
     }
-    for (const key of KEYS) {
-      try {
-        const entries: unknown[] = (await FileUtils.listFiles(`${dir}/${key}`)) ?? [];
-        if (entries.length > 0) {
-          decode(settings, key, decodeURIComponent(leafName(entries[0])));
-        }
-      } catch (e) {
-        console.warn(`loadSettings: ${key} unreadable, using default`, e);
-      }
-    }
+    const entries: unknown[] = (await FileUtils.listFiles(`${dir}/${key}`)) ?? [];
+    return entries.length > 0 ? decodeURIComponent(leafName(entries[0])) : null;
   } catch (e) {
-    console.warn('loadSettings failed, using defaults', e);
+    console.warn(`readKey: ${key} unreadable`, e);
+    return null;
   }
-  return settings;
 }
 
-export async function saveSettings(s: Settings): Promise<void> {
+/** Stores `value` under `key`, or removes the key when `value` is null. Errors are logged, not thrown. */
+export async function writeKey(key: string, value: string | null): Promise<void> {
   try {
     const dir = await settingsDir();
     if (!dir) {
       return;
     }
     await FileUtils.makeDir(dir);
-    // One key per try, so a key the device refuses cannot take the others with it.
-    for (const key of KEYS) {
-      try {
-        const keyDir = `${dir}/${key}`;
-        if (await FileUtils.exists(keyDir)) {
-          await FileUtils.deleteDir(keyDir);
-        }
-        await FileUtils.makeDir(keyDir);
-        await FileUtils.makeDir(`${keyDir}/${encodeURIComponent(encode(s, key))}`);
-      } catch (e) {
-        console.warn(`saveSettings: ${key} not saved`, e);
-      }
+    const keyDir = `${dir}/${key}`;
+    if (await FileUtils.exists(keyDir)) {
+      await FileUtils.deleteDir(keyDir);
+    }
+    if (value !== null) {
+      await FileUtils.makeDir(keyDir);
+      await FileUtils.makeDir(`${keyDir}/${encodeURIComponent(value)}`);
     }
   } catch (e) {
-    console.warn('saveSettings failed', e);
+    console.warn(`writeKey: ${key} not saved`, e);
+  }
+}
+
+export async function loadSettings(): Promise<Settings> {
+  const settings: Settings = { ...DEFAULT_SETTINGS, style: { ...DEFAULT_STYLE }, coverage: { ...TONE_COVERAGE } };
+  for (const key of KEYS) {
+    const raw = await readKey(key);
+    if (raw !== null) {
+      decode(settings, key, raw);
+    }
+  }
+  return settings;
+}
+
+/** One key per write, so a key the device refuses cannot take the others with it. */
+export async function saveSettings(s: Settings): Promise<void> {
+  for (const key of KEYS) {
+    await writeKey(key, encode(s, key));
   }
 }

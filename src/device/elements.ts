@@ -1,8 +1,10 @@
 import { Element, PluginCommAPI, PluginFileAPI, PluginManager } from 'sn-plugin-lib';
 import type { Plan } from '../render/plan';
 import { parseRecipe, serializeRecipe, type Recipe } from '../render/recipe';
+import { noteKey, type LastPlacement } from './lastPlacement';
 import type { Box } from '../shapes';
 import { currentPage, type PageCtx } from './page';
+import { dropLasso, showView } from './lasso';
 import { call, recycle } from './sdk';
 
 /** Integer widths render as hairlines (finding "thickness unit"), so always carry a fraction. */
@@ -198,9 +200,9 @@ const WHOLE_PAD = 16;
  * Deleting an element outside the lasso unbinds the note (the next call fails with 105 and the
  * note is closed), so the whole shape is lassoed first and only what that lasso holds is deleted.
  * lassoElements needs the plugin view closed. Throws, changing nothing, unless the lasso holds
- * exactly the `expected` elements carrying `tag`.
+ * exactly the `expected` elements satisfying `ours`.
  */
-export async function replaceWhole(ctx: PageCtx, tag: string, expected: number, box: Box, plan: Plan, recipe: Recipe): Promise<Box> {
+async function deleteLassoed(ctx: PageCtx, box: Box, ours: (e: any) => boolean, expected: number, mismatch?: () => Promise<void>): Promise<void> {
   await PluginManager.closePluginView();
   await call(
     'lassoElements',
@@ -216,11 +218,12 @@ export async function replaceWhole(ctx: PageCtx, tag: string, expected: number, 
   const selected = (await call<any[] | null>('getLassoElements', PluginCommAPI.getLassoElements())) ?? [];
   let nums: number[];
   try {
-    nums = selected.filter(e => e?.userData === tag).map(e => e.numInPage);
+    nums = selected.filter(ours).map(e => e.numInPage);
   } finally {
     selected.forEach(recycle);
   }
   if (nums.length !== expected) {
+    await mismatch?.();
     throw new Error(`the lasso caught ${nums.length} of the shape's ${expected} elements; nothing was changed`);
   }
   if (nums.length === selected.length) {
@@ -228,5 +231,41 @@ export async function replaceWhole(ctx: PageCtx, tag: string, expected: number, 
   } else {
     await call('deletePageElements', PluginCommAPI.deletePageElements(nums, ctx.page));
   }
+}
+
+/** Removes the whole shape carrying `tag` (see deleteLassoed); the view is closed afterwards. */
+export function deleteWhole(ctx: PageCtx, tag: string, expected: number, box: Box): Promise<void> {
+  return deleteLassoed(ctx, box, e => e?.userData === tag, expected);
+}
+
+export async function replaceWhole(ctx: PageCtx, tag: string, expected: number, box: Box, plan: Plan, recipe: Recipe): Promise<Box> {
+  await deleteWhole(ctx, tag, expected, box);
   return insertPlan(ctx, plan, recipe);
+}
+
+/** Removes the current selection as it is. */
+export async function deleteLasso(): Promise<void> {
+  await call('deleteLassoElements', PluginCommAPI.deleteLassoElements());
+}
+
+/** Removes only the listed elements of the current selection. */
+export async function deleteElements(ctx: PageCtx, nums: number[]): Promise<void> {
+  await call('deletePageElements', PluginCommAPI.deletePageElements(nums, ctx.page));
+}
+
+/**
+ * Removes the shape a placement record describes: its elements are the ones whose recipe carries
+ * the recorded seed. The lasso the check needs closes the view, so when the shape is not found
+ * as recorded (moved, stretched or already gone) the lasso is dropped and the view reopened
+ * before the error reaches the caller.
+ */
+export function undoPlacement(ctx: PageCtx, record: LastPlacement): Promise<void> {
+  if (record.page !== ctx.page || record.note !== noteKey(ctx.notePath)) {
+    return Promise.reject(new Error('the last shape was placed on another page; nothing was changed'));
+  }
+  const ours = (e: any) => parseRecipe(e?.userData)?.seed === record.seed;
+  return deleteLassoed(ctx, record.box, ours, record.count, async () => {
+    await dropLasso();
+    await showView();
+  });
 }

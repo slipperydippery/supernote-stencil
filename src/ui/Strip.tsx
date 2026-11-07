@@ -2,7 +2,7 @@ import React from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import type { Style } from '../render/style';
 import type { ShapeDef } from '../shapes';
-import { ICONS, PIN } from './icons';
+import { BIN, ICONS, PIN } from './icons';
 import StyleBar from './StyleBar';
 import { INK, PAPER, RULE, STRIP_HEIGHT, STRIP_MARGIN_X, STRIP_TOP } from './theme';
 
@@ -13,11 +13,13 @@ export type StripProps = {
   onExpand(): void;
   onClose(): void;
   action?: { label: string; onPress(): void };
+  /** RedrawFlow's delete: removes the lassoed Stencil shape and nothing else. */
+  onRemove?(): void;
   /** Only PlaceFlow passes this: whether opening Stencil from the sidebar should arm the strip again. RedrawFlow's reuse of Strip has no opinion on it. */
   armOnOpen?: { value: boolean; onToggle(): void };
 };
 
-export default function Strip({ shape, style, onStyle, onExpand, onClose, action, armOnOpen }: StripProps) {
+export default function Strip({ shape, style, onStyle, onExpand, onClose, action, onRemove, armOnOpen }: StripProps) {
   return (
     <View style={styles.strip}>
       {/* The shape and its pin are one tile, so "pinned" reads as a property of the shape. A fixed width keeps the chips still when the pinned frame thickens. */}
@@ -40,6 +42,11 @@ export default function Strip({ shape, style, onStyle, onExpand, onClose, action
       <View style={styles.bar}>
         <StyleBar style={style} onStyle={onStyle} size="strip" />
       </View>
+      {onRemove && (
+        <Pressable testID="strip-remove" accessibilityRole="button" accessibilityLabel="Delete this shape" onPress={onRemove} style={styles.mark}>
+          <Image source={BIN} style={styles.markIcon} resizeMode="contain" />
+        </Pressable>
+      )}
       {action && (
         <Pressable testID="strip-action" accessibilityRole="button" accessibilityLabel={action.label} onPress={action.onPress} style={[styles.mark, styles.markOn]}>
           <Text style={[styles.markText, styles.markTextOn]}>{action.label}</Text>

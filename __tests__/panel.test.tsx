@@ -43,7 +43,28 @@ describe('Panel', () => {
   });
 });
 
+describe('Panel header', () => {
+  const props = { tab: 'basic' as const, onTab: noop, style: DEFAULT_STYLE, onStyle: noop, selected: null, onPick: noop, onClose: noop };
+
+  it('shows an undo button only when given a handler, and reports it', () => {
+    expect(render(<Panel {...props} />).root.findAllByProps({ testID: 'panel-undo' })).toHaveLength(0);
+    const onUndo = jest.fn();
+    const r = render(<Panel {...props} onUndo={onUndo} onSettings={noop} />);
+    act(() => r.root.findByProps({ testID: 'panel-undo' }).props.onPress());
+    expect(onUndo).toHaveBeenCalled();
+  });
+});
+
 describe('Strip', () => {
+  it('shows a delete mark only when given a handler, and reports it', () => {
+    const base = { shape: SHAPES.decision, style: DEFAULT_STYLE, onStyle: noop, onExpand: noop, onClose: noop };
+    expect(render(<Strip {...base} />).root.findAllByProps({ testID: 'strip-remove' })).toHaveLength(0);
+    const onRemove = jest.fn();
+    const r = render(<Strip {...base} onRemove={onRemove} action={{ label: '✓', onPress: noop }} />);
+    act(() => r.root.findByProps({ testID: 'strip-remove' }).props.onPress());
+    expect(onRemove).toHaveBeenCalled();
+  });
+
   it('expands from the preview and renders an optional action', () => {
     const onExpand = jest.fn();
     const onPress = jest.fn();

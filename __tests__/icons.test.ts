@@ -17,6 +17,12 @@ describe('icons', () => {
     ...TONES.map(v => `tone-${v}`),
     ...LOOKS.map(v => `look-${v}`),
   ];
+  it('has the strip marks', () => {
+    for (const m of ['pin', 'pin-on', 'bin']) {
+      expect(existsSync(join(ASSETS, 'glyphs', `${m}.png`))).toBe(true);
+    }
+  });
+
   it('has the fifteen style glyphs', () => {
     expect(glyphs).toHaveLength(15);
     for (const g of glyphs) {

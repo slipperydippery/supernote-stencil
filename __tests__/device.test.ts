@@ -107,6 +107,10 @@ jest.mock('sn-plugin-lib', () => {
             }, 10),
           ),
       ),
+      showPluginView: jest.fn(() => {
+        record('showPluginView');
+        return Promise.resolve(true);
+      }),
       getPluginDirPath: jest.fn(() => Promise.resolve('/plugin')),
       hasPermission: jest.fn((p: string) => {
         record(`hasPermission:${p}`);
@@ -139,7 +143,7 @@ jest.mock('sn-plugin-lib', () => {
 });
 
 import { PluginCommAPI } from 'sn-plugin-lib';
-import { currentPage, DEFAULT_SETTINGS, insertPlan, loadSettings, readLasso, replaceElements, replaceLasso, replaceWhole, saveSettings, selectRect } from '../src/device';
+import { clearLastPlacement, currentPage, DEFAULT_SETTINGS, deleteElements, deleteLasso, deleteWhole, forgetPlacement, insertPlan, loadLastPlacement, loadSettings, readLasso, recordPlacement, replaceElements, replaceLasso, replaceWhole, saveSettings, selectRect, undoPlacement } from '../src/device';
 import type { Settings } from '../src/device';
 
 const ctx = { notePath: '/note/a.note', page: 2, width: 1920, height: 2560, unit: 1 };
@@ -410,6 +414,120 @@ describe('replaceWhole', () => {
     mockState.lassoElements = [shape(3), shape(4)];
     await expect(replaceWhole(ctx, tag, 3, box, plan, recipe)).rejects.toThrow("2 of the shape's 3 elements");
     expect(mockState.log.filter(l => /^(delete|createElement|insertPageElements)/.test(l))).toEqual([]);
+  });
+});
+
+describe('deleteWhole', () => {
+  const box = { left: 100, top: 200, right: 300, bottom: 400 };
+  const shape = (n: number) => ({ uuid: `s${n}`, userData: tag, numInPage: n });
+
+  it('lassoes the whole shape with the view closed and deletes the lasso when it holds only the shape', async () => {
+    mockState.lassoElements = [shape(3), shape(4), shape(5)];
+    await deleteWhole(ctx, tag, 3, box);
+    const order = mockState.log.filter(l => /^(closePluginView|lassoElements|getLassoElements|delete|insertPageElements)/.test(l));
+    expect(order).toEqual(['closePluginView', 'lassoElements', 'getLassoElements', 'deleteLassoElements']);
+  });
+
+  it('deletes only the shape when the lasso also caught other ink', async () => {
+    mockState.lassoElements = [{ uuid: 'ink', userData: '', numInPage: 1 }, shape(7), shape(8)];
+    await deleteWhole(ctx, tag, 2, box);
+    expect(mockState.log).toContain(`deletePageElements:7,8@${ctx.page}`);
+    expect(mockState.log).not.toContain('deleteLassoElements');
+  });
+
+  it('changes nothing when the lasso does not hold exactly the shape', async () => {
+    mockState.lassoElements = [shape(3)];
+    await expect(deleteWhole(ctx, tag, 3, box)).rejects.toThrow("1 of the shape's 3 elements");
+    expect(mockState.log.filter(l => /^delete/.test(l))).toEqual([]);
+  });
+});
+
+describe('deleteLasso and deleteElements', () => {
+  it('delete the selection, or only the listed numbers, without closing the view', async () => {
+    await deleteLasso();
+    await deleteElements(ctx, [5, 7]);
+    expect(mockState.log).toEqual(['deleteLassoElements', `deletePageElements:5,7@${ctx.page}`]);
+  });
+});
+
+describe('undoPlacement', () => {
+  const box = { left: 100, top: 200, right: 300, bottom: 400 };
+  const record = { note: '', page: ctx.page, seed: 7, count: 2, box };
+  const ours = (n: number) => ({ uuid: `s${n}`, userData: tag, numInPage: n });
+  const other = { uuid: 'o', userData: tag.replace('"seed":7', '"seed":8'), numInPage: 9 };
+
+  beforeEach(async () => {
+    await recordPlacement(ctx, 7, 2, box);
+    record.note = (await loadLastPlacement(ctx))!.note;
+  });
+
+  it('finds the shape by the recipe seed inside the recorded box and deletes only it', async () => {
+    mockState.lassoElements = [other, ours(3), ours(4)];
+    await undoPlacement(ctx, record);
+    const order = mockState.log.filter(l => /^(closePluginView|lassoElements|getLassoElements|delete|setLassoBoxState|showPluginView)/.test(l));
+    expect(order).toEqual(['closePluginView', 'lassoElements', 'getLassoElements', `deletePageElements:3,4@${ctx.page}`]);
+    expect(PluginCommAPI.lassoElements).toHaveBeenCalledWith({ left: 84, top: 184, right: 316, bottom: 416 });
+  });
+
+  it('deletes the lasso when it holds only the shape', async () => {
+    mockState.lassoElements = [ours(3), ours(4)];
+    await undoPlacement(ctx, record);
+    expect(mockState.log).toContain('deleteLassoElements');
+  });
+
+  it('drops the lasso and reopens the view when the shape is not found as recorded', async () => {
+    mockState.lassoElements = [ours(3)];
+    await expect(undoPlacement(ctx, record)).rejects.toThrow("1 of the shape's 2 elements");
+    const order = mockState.log.filter(l => /^(delete|setLassoBoxState|showPluginView)/.test(l));
+    expect(order).toEqual(['setLassoBoxState:2', 'showPluginView']);
+  });
+
+  it('refuses a record from another page or note before touching the view', async () => {
+    await expect(undoPlacement(ctx, { ...record, page: 3 })).rejects.toThrow('another page');
+    await expect(undoPlacement({ ...ctx, notePath: '/note/b.note' }, record)).rejects.toThrow('another page');
+    expect(mockState.log).toEqual([]);
+  });
+});
+
+describe('last placement', () => {
+  const box = { left: 100.4, top: 200, right: 300.2, bottom: 400 };
+
+  it('round-trips with the box rounded outwards, for this note and page only', async () => {
+    await recordPlacement(ctx, 42, 5, box);
+    const r = await loadLastPlacement(ctx);
+    expect(r).toMatchObject({ page: 2, seed: 42, count: 5, box: { left: 100, top: 200, right: 301, bottom: 400 } });
+    expect(await loadLastPlacement({ ...ctx, page: 3 })).toBeNull();
+    expect(await loadLastPlacement({ ...ctx, notePath: '/note/b.note' })).toBeNull();
+  });
+
+  it('is stored as one plain directory name', async () => {
+    await recordPlacement(ctx, 42, 5, box);
+    const leaves = [...mockState.dirs].filter(d => d.startsWith('/plugin/settings/lastPlacement/'));
+    expect(leaves).toHaveLength(1);
+    expect(leaves[0]).toMatch(/^\/plugin\/settings\/lastPlacement\/2-42-5-100-200-301-400-[0-9a-z]+$/);
+  });
+
+  it('clears, and forgets only a record with the given seed', async () => {
+    await recordPlacement(ctx, 42, 5, box);
+    await forgetPlacement(41);
+    expect(await loadLastPlacement(ctx)).not.toBeNull();
+    await forgetPlacement(42);
+    expect(await loadLastPlacement(ctx)).toBeNull();
+    await recordPlacement(ctx, 42, 5, box);
+    await clearLastPlacement();
+    expect(await loadLastPlacement(ctx)).toBeNull();
+  });
+
+  it('ignores a corrupt record', async () => {
+    mockState.dirs.add('/plugin/settings/lastPlacement/2-42-x-100-200-301-400-abc');
+    expect(await loadLastPlacement(ctx)).toBeNull();
+  });
+
+  it('leaves the other settings alone', async () => {
+    await saveSettings({ ...DEFAULT_SETTINGS, lastShape: 'circle' });
+    await recordPlacement(ctx, 42, 5, box);
+    await clearLastPlacement();
+    expect(await loadSettings()).toEqual({ ...DEFAULT_SETTINGS, lastShape: 'circle' });
   });
 });
 
