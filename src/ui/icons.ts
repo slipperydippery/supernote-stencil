@@ -48,3 +48,8 @@ export const GLYPHS: Record<GlyphKey, ImageSourcePropType> = {
   'look-clean': require('../../assets/glyphs/look-clean.png'),
   'look-hand': require('../../assets/glyphs/look-hand.png'),
 };
+
+export const PIN = {
+  off: require('../../assets/glyphs/pin.png'),
+  on: require('../../assets/glyphs/pin-on.png'),
+} satisfies Record<string, ImageSourcePropType>;
