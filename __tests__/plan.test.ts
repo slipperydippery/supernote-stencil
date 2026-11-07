@@ -275,7 +275,22 @@ describe('renderShape', () => {
       expect(Math.abs(cross.length - 2 * hatch.length)).toBeLessThanOrEqual(1);
       const slope = (s: Plan['strokes'][number]) => Math.sign((s.points[s.points.length - 1].y - s.points[0].y) * (s.points[s.points.length - 1].x - s.points[0].x));
       expect(hatch.every(s => slope(s) > 0)).toBe(true);
-      expect(cross.some(s => slope(s) < 0)).toBe(true);
+      // x + y is constant along a down-left line, so consecutive values give the gap.
+      const downLeft = cross.filter(s => slope(s) < 0).map(s => Math.min(...s.points.map(p => p.x + p.y))).sort((a, b) => a - b);
+      expect(downLeft.length).toBeGreaterThan(2);
+      expect((downLeft[1] - downLeft[0]) * Math.SQRT1_2).toBeCloseTo(TONE_GAP.dark, 0);
+    });
+
+    it('always puts one line through the centre, so a box narrower than the gap is not left empty', () => {
+      const tiny = { left: 100, top: 100, right: 120, bottom: 120 };
+      for (const fill of ['hatch', 'cross'] as const) {
+        const lines = renderShape(SHAPES.rectangle, tiny, style({ fill, tone: 'light' }), 1).strokes;
+        expect(lines.length).toBe(fill === 'cross' ? 2 : 1);
+        for (const s of lines) {
+          const mid = s.points[Math.floor(s.points.length / 2)];
+          expect(Math.hypot(mid.x - 110, mid.y - 110)).toBeLessThan(3);
+        }
+      }
     });
   });
 

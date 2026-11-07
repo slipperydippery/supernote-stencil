@@ -17,7 +17,7 @@ describe('recipe', () => {
 
   it.each([
     ['none', { fill: 'none', tone: 'dark' }],
-    ['hatch', { fill: 'hatch', tone: 'dark' }],
+    ['hatch', { fill: 'hatch', tone: 'black' }],
     ['light', { fill: 'solid', tone: 'light' }],
     ['dark', { fill: 'solid', tone: 'dark' }],
   ])('upgrades a recipe written before tone with fill %s', (fill, expected) => {

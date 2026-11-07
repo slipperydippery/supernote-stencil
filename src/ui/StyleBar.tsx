@@ -61,7 +61,7 @@ export default function StyleBar({ style, onStyle, size }: Props) {
 const styles = StyleSheet.create({
   rows: { gap: 6 },
   bar: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: 10, rowGap: 6 },
-  // Two groups only, so no wrap needed; centered as one cluster with a wider gap, instead of hugging the left edge.
+  // One row per PANEL_ROWS entry, centered as one cluster with a wider gap; the widest row is 8 chips, which fits without wrapping.
   panelBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', columnGap: 24 },
   group: { flexDirection: 'row', gap: 3 },
   groupOff: { opacity: 0.3 },

@@ -7,7 +7,7 @@ import type { Box, Pt } from '../shapes/types';
 import { handDraw, LOCKED, resample, type XY } from './hand';
 import type { StrokeSpec } from './plan';
 import { seeded } from './rng';
-import { firmwareWidth, TONE_COLOR, TONE_GAP, widthPx, type Style } from './style';
+import { firmwareWidth, HATCH_SHARE, TONE_COLOR, widthPx, type Style } from './style';
 
 const STEP = 4;
 const PRESSURE = 2000;
@@ -102,9 +102,10 @@ export function headStrokes(outline: Pt[]): StrokeSpec[] {
 
 /**
  * Fill strokes for a closed outline. Segments stop half a stroke width short
- * of the boundary so round caps stay inside the outline.
+ * of the boundary so round caps stay inside the outline. `gap` is the
+ * perpendicular hatch spacing in page px.
  */
-export function fillStrokes(outline: Pt[], style: Style, width: number, seed: number): StrokeSpec[] {
+export function fillStrokes(outline: Pt[], style: Style, width: number, seed: number, gap: number): StrokeSpec[] {
   if (style.fill === 'none' || outline.length < 4) {
     return [];
   }
@@ -119,10 +120,9 @@ export function fillStrokes(outline: Pt[], style: Style, width: number, seed: nu
   }
   const out: StrokeSpec[] = [];
 
-  // Hatch: 45° lines stepped along x. The perpendicular gap is the tone's
-  // constant, so the step along x is √2 times that.
-  const thickness = 0.45 * width;
-  const step = TONE_GAP[style.tone] * Math.SQRT2;
+  // Hatch: 45° lines stepped along x, so the step along x is √2 times the gap.
+  const thickness = HATCH_SHARE * width;
+  const step = gap * Math.SQRT2;
   const half = widthPx(thickness) / 2;
   const k = Math.max(w, h) / 200;
   const T = { bow: LOCKED.bow * k * 0.5, swing: LOCKED.swing * 0.5, over: 0, step: STEP };
@@ -148,15 +148,20 @@ export function fillStrokes(outline: Pt[], style: Style, width: number, seed: nu
 
 /**
  * The 45° lines through `poly`, `step` apart along x. `dir` 1 runs down-right
- * (the lines start left of the box), -1 runs down-left (they start past its right edge).
+ * (the lines start left of the box), -1 runs down-left (they start past its
+ * right edge). The pattern is phased so one line passes through the centre of
+ * the box: a shape narrower than the step still gets that line instead of none.
  */
 function diagonals(poly: Pt[], b: Box, step: number, dir: 1 | -1): [Pt, Pt][] {
   const h = b.bottom - b.top;
   const d = { x: dir * Math.SQRT1_2, y: Math.SQRT1_2 };
   const from = dir > 0 ? b.left - h : b.left;
   const to = dir > 0 ? b.right : b.right + h;
+  // Where the line through the centre meets y = top.
+  const centre = (b.left + b.right) / 2 - (dir * h) / 2;
+  const start = centre - Math.ceil((centre - from) / step) * step;
   const out: [Pt, Pt][] = [];
-  for (let x = from + step / 2; x < to; x += step) {
+  for (let x = start; x < to; x += step) {
     out.push(...clipLine(poly, { x, y: b.top }, d));
   }
   return out;
