@@ -32,7 +32,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   device.log = [];
   device.settings = { style: DEFAULT_STYLE, lastShape: null, tab: 'basic', armOnOpen: true, coverage: TONE_COVERAGE, wrapPadding: 24 };
-  mocked.readLasso.mockResolvedValue({ rect: RECT, liveRect: RECT, recipe: null, count: 3, recipes: 0 });
+  mocked.readLasso.mockResolvedValue({ rect: RECT, liveRect: RECT, recipe: null, count: 3, recipes: 0, shapes: 0, own: null });
 });
 
 it('reads the lasso once on mount and routes a bare selection to wrap', async () => {
@@ -43,7 +43,7 @@ it('reads the lasso once on mount and routes a bare selection to wrap', async ()
 });
 
 it('routes to redraw instead of wrap when the selection carries a recipe', async () => {
-  mocked.readLasso.mockResolvedValue({ rect: RECT, liveRect: RECT, recipe: RECIPE, count: 1, recipes: 1 });
+  mocked.readLasso.mockResolvedValue({ rect: RECT, liveRect: RECT, recipe: RECIPE, count: 1, recipes: 1, shapes: 1, own: null });
   const r = await open();
   expect(has(r, 'strip-icon-rectangle')).toBe(true);
   expect(has(r, 'strip-action')).toBe(true);
@@ -82,7 +82,7 @@ it('closes the view from the wrap panel', async () => {
 });
 
 it('shows a notice instead of wrap when the lasso caught nothing', async () => {
-  mocked.readLasso.mockResolvedValue({ rect: RECT, liveRect: RECT, recipe: null, count: 0, recipes: 0 });
+  mocked.readLasso.mockResolvedValue({ rect: RECT, liveRect: RECT, recipe: null, count: 0, recipes: 0, shapes: 0, own: null });
   const r = await open();
   expect(JSON.stringify(r.toJSON())).toContain('nothing selected');
   expect(has(r, 'panel-close')).toBe(false);

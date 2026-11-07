@@ -1,17 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { closeView, readLasso } from '../device';
-import type { Recipe } from '../render/recipe';
-import type { Box } from '../shapes';
+import { closeView, readLasso, type LassoSelection } from '../device';
 import Message from './Message';
 import RedrawFlow from './RedrawFlow';
 import WrapFlow from './WrapFlow';
 
-type Selection = { rect: Box; liveRect: Box; recipe: Recipe | null; count: number; recipes: number };
-
 /** Reads the lasso once on mount, before any UI; reading again after the user interacts risks stale data. */
 export default function LassoFlow() {
-  const [sel, setSel] = useState<Selection | null>(null);
+  const [sel, setSel] = useState<LassoSelection | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -35,7 +31,7 @@ export default function LassoFlow() {
   if (sel.recipe) {
     return (
       <View style={styles.root}>
-        <RedrawFlow selection={{ rect: sel.rect, liveRect: sel.liveRect, recipe: sel.recipe, count: sel.count, recipes: sel.recipes }} />
+        <RedrawFlow selection={{ ...sel, recipe: sel.recipe }} />
       </View>
     );
   }

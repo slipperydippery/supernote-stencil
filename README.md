@@ -44,6 +44,8 @@ A hatched shape records the spacing it was drawn with, so changing the setting n
 
 Lasso a placed Stencil shape, pull the native resize handle to the size you want, then tap **Stencil** on the lasso toolbar. The strip reappears armed with that shape's recipe — restyle if you like, then tap the check mark. The degraded ink is deleted and the shape is rendered fresh into the lasso box.
 
+Other ink caught in the lasso is left alone: only the shape's own elements are replaced, at their own size. That works only while the selection hasn't been moved or stretched; to resize, lasso the shape by itself. A selection holding two Stencil shapes is refused with a notice and nothing is touched.
+
 ## Style bar glyphs
 
 Five chip groups set the style of the next insert and are remembered across sessions:

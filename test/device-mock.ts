@@ -26,6 +26,10 @@ export function deviceMock() {
       device.log.push('replaceLasso');
       return Promise.resolve(plan.bounds);
     }),
+    replaceElements: jest.fn((_ctx: unknown, _nums: number[], plan: { bounds: unknown }) => {
+      device.log.push('replaceElements');
+      return Promise.resolve(plan.bounds);
+    }),
     selectRect: jest.fn(() => {
       device.log.push('selectRect');
       return Promise.resolve();
@@ -41,6 +45,8 @@ export function deviceMock() {
         recipe: null as Recipe | null,
         count: 3,
         recipes: 0,
+        shapes: 0,
+        own: null as { nums: number[]; box: { left: number; top: number; right: number; bottom: number } } | null,
       }),
     ),
   };

@@ -14,6 +14,11 @@ export function redrawBox(rect: Box, penWidth: number): Box {
   return { left: cx - w / 2, top: cy - h / 2, right: cx + w / 2, bottom: cy + h / 2 };
 }
 
+/** The preview box may differ from the lasso rect by rounding, so a pending transform is anything past 2 px. */
+export function moved(rect: Box, live: Box): boolean {
+  return (['left', 'top', 'right', 'bottom'] as const).some(k => Math.abs(rect[k] - live[k]) > 2);
+}
+
 /** Reverses the box to the drag direction a placed arrow recorded, so redraw keeps pointing the same way. */
 export function applyFlip(box: Box, flip?: Recipe['flip']): Box {
   if (!flip) {
