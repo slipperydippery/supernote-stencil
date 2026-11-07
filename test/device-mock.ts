@@ -26,6 +26,10 @@ export function deviceMock() {
       device.log.push('replaceLasso');
       return Promise.resolve(plan.bounds);
     }),
+    replaceWhole: jest.fn((_ctx: unknown, _tag: string, _n: number, _box: unknown, plan: { bounds: unknown }) => {
+      device.log.push('replaceWhole');
+      return Promise.resolve(plan.bounds);
+    }),
     replaceElements: jest.fn((_ctx: unknown, _nums: number[], plan: { bounds: unknown }) => {
       device.log.push('replaceElements');
       return Promise.resolve(plan.bounds);
@@ -46,7 +50,7 @@ export function deviceMock() {
         count: 3,
         recipes: 0,
         shapes: 0,
-        own: null as { nums: number[]; box: { left: number; top: number; right: number; bottom: number } } | null,
+        own: null as { nums: number[]; box: { left: number; top: number; right: number; bottom: number }; tag?: string } | null,
       }),
     ),
   };
