@@ -11,7 +11,7 @@ jest.mock('../src/render/plan', () => {
 
 import * as dev from '../src/device';
 import { renderShape } from '../src/render/plan';
-import { DEFAULT_STYLE, TONE_GAP } from '../src/render/style';
+import { DEFAULT_STYLE, hatchGap, TONE_COVERAGE } from '../src/render/style';
 import { SHAPES } from '../src/shapes';
 import PlaceFlow from '../src/ui/PlaceFlow';
 import PlacementLayer from '../src/ui/PlacementLayer';
@@ -51,7 +51,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   jest.spyOn(PixelRatio, 'get').mockReturnValue(2);
   device.log = [];
-  device.settings = { style: DEFAULT_STYLE, lastShape: null, tab: 'basic', armOnOpen: true, gaps: TONE_GAP, wrapPadding: 24 };
+  device.settings = { style: DEFAULT_STYLE, lastShape: null, tab: 'basic', armOnOpen: true, coverage: TONE_COVERAGE, wrapPadding: 24 };
 });
 
 it('opens the panel when nothing is remembered', async () => {
@@ -237,16 +237,19 @@ describe('settings screen', () => {
     expect(has(r, 'tab-basic')).toBe(true);
   });
 
-  it('steps a tone denser and persists it, leaving the other tones', async () => {
+  it('steps a tone 1 % denser and persists it, leaving the other tones', async () => {
     const r = await open();
     await press(r, 'panel-settings');
     await press(r, 'gap-dark-more');
-    expect(mocked.saveSettings).toHaveBeenLastCalledWith({ ...device.settings, gaps: { light: 68, dark: 18, black: 13 } });
-    expect(r.root.findByProps({ testID: 'gap-dark-value' }).props.children).toBe('15 %');
+    expect(mocked.saveSettings).toHaveBeenLastCalledWith({ ...device.settings, coverage: { light: 4, dark: 12, black: 21 } });
+    expect(r.root.findByProps({ testID: 'gap-dark-value' }).props.children).toBe('12 %');
+    await press(r, 'gap-dark-less');
+    await press(r, 'gap-dark-less');
+    expect(r.root.findByProps({ testID: 'gap-dark-value' }).props.children).toBe('10 %');
   });
 
-  it('disables stepping past either end of a ladder', async () => {
-    device.settings = { ...device.settings, gaps: { light: 135, dark: 25, black: 9 }, wrapPadding: 0 };
+  it('disables stepping past 1 % and 66 %, and the padding ends', async () => {
+    device.settings = { ...device.settings, coverage: { light: 1, dark: 11, black: 66 }, wrapPadding: 0 };
     const r = await open();
     await press(r, 'panel-settings');
     const disabled = (id: string) => r.root.findAllByProps({ testID: id })[0].props.disabled;
@@ -264,17 +267,17 @@ describe('settings screen', () => {
     expect(r.root.findByProps({ testID: 'wrap-padding-value' }).props.children).toBe('3 mm');
     await press(r, 'gap-light-less');
     await press(r, 'settings-reset');
-    expect(mocked.saveSettings).toHaveBeenLastCalledWith({ ...device.settings, gaps: TONE_GAP, wrapPadding: 24 });
+    expect(mocked.saveSettings).toHaveBeenLastCalledWith({ ...device.settings, coverage: TONE_COVERAGE, wrapPadding: 24 });
   });
 });
 
 it('hatches at the saved gap and records it in the recipe', async () => {
-  device.settings = { ...device.settings, lastShape: 'rectangle', style: { ...DEFAULT_STYLE, fill: 'hatch' }, gaps: { ...TONE_GAP, dark: 45 } };
+  device.settings = { ...device.settings, lastShape: 'rectangle', style: { ...DEFAULT_STYLE, fill: 'hatch' }, coverage: { ...TONE_COVERAGE, dark: 6 } };
   const r = await open();
   await gesture(r, [300, 400], [300, 400]);
-  expect((renderShape as jest.Mock).mock.calls[0][4]).toBe(45);
+  expect((renderShape as jest.Mock).mock.calls[0][4]).toBe(hatchGap(6));
   const [, , recipe] = mocked.insertPlan.mock.calls[0] as any[];
-  expect(recipe.gap).toBe(45);
+  expect(recipe.gap).toBe(hatchGap(6));
 });
 
 it('records no gap for an unhatched shape', async () => {

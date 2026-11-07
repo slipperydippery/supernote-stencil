@@ -328,7 +328,7 @@ describe('settings', () => {
       lastShape: 'decision',
       tab: 'flow',
       armOnOpen: false,
-      gaps: { light: 90, dark: 34, black: 9 },
+      coverage: { light: 3, dark: 8, black: 66 },
       wrapPadding: 48,
     };
     await saveSettings(s);
@@ -350,13 +350,13 @@ describe('settings', () => {
       lastShape: 'decision',
       tab: 'flow',
       armOnOpen: false,
-      gaps: { light: 90, dark: 34, black: 9 },
+      coverage: { light: 3, dark: 8, black: 66 },
       wrapPadding: 48,
     });
     const leaves = [...mockState.dirs].filter(d => d.split('/').length === 5).sort();
     expect(leaves).toEqual([
       '/plugin/settings/armOnOpen/off',
-      '/plugin/settings/gaps/90-34-9',
+      '/plugin/settings/coverage/3-8-66',
       '/plugin/settings/lastShape/decision',
       '/plugin/settings/style/thick-dashed-hatch-light-hand',
       '/plugin/settings/tab/flow',
@@ -434,12 +434,14 @@ describe('settings', () => {
   });
 
   it.each([
-    ['gaps', '68-25', 'gaps'],
-    ['gaps', '68-26-13', 'gaps'],
+    ['coverage', '4-11', 'coverage'],
+    ['coverage', '4-11-67', 'coverage'],
+    ['coverage', '0-11-21', 'coverage'],
+    ['coverage', '4-11.5-21', 'coverage'],
     ['wrapPadding', '25', 'wrapPadding'],
     ['wrapPadding', 'wide', 'wrapPadding'],
   ] as const)('defaults %s on an off-ladder value %s', async (key, raw, field) => {
-    await saveSettings({ ...DEFAULT_SETTINGS, gaps: { light: 90, dark: 34, black: 9 }, wrapPadding: 48 });
+    await saveSettings({ ...DEFAULT_SETTINGS, coverage: { light: 3, dark: 8, black: 66 }, wrapPadding: 48 });
     for (const d of [...mockState.dirs]) {
       if (d.startsWith(`/plugin/settings/${key}/`)) {
         mockState.dirs.delete(d);

@@ -69,6 +69,12 @@ describe('recipe', () => {
     expect(parseRecipe(`${serializeRecipe(r).slice(0, -1)},"gap":${gap}}`)).toBeNull();
   });
 
+  it('derives the built-in gaps from 4 / 11 / 21 % coverage', () => {
+    expect(TONE_GAP.light).toBeCloseTo(67.5, 1);
+    expect(TONE_GAP.dark).toBeCloseTo(24.55, 1);
+    expect(TONE_GAP.black).toBeCloseTo(12.86, 1);
+  });
+
   it('records a gap only for hatch and cross', () => {
     expect(gapField({ ...DEFAULT_STYLE, fill: 'hatch' }, 34)).toEqual({ gap: 34 });
     expect(gapField({ ...DEFAULT_STYLE, fill: 'cross' }, 34)).toEqual({ gap: 34 });

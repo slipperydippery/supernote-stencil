@@ -5,7 +5,7 @@ import { device, deviceMock } from '../test/device-mock';
 jest.mock('../src/device', () => require('../test/device-mock').deviceMock());
 
 import * as dev from '../src/device';
-import { DEFAULT_STYLE, TONE_GAP } from '../src/render/style';
+import { DEFAULT_STYLE, hatchGap, TONE_COVERAGE } from '../src/render/style';
 import LassoFlow from '../src/ui/LassoFlow';
 
 const mocked = dev as unknown as ReturnType<typeof deviceMock>;
@@ -31,7 +31,7 @@ const press = async (r: ReactTestRenderer, testID: string) => {
 beforeEach(() => {
   jest.clearAllMocks();
   device.log = [];
-  device.settings = { style: DEFAULT_STYLE, lastShape: null, tab: 'basic', armOnOpen: true, gaps: TONE_GAP, wrapPadding: 24 };
+  device.settings = { style: DEFAULT_STYLE, lastShape: null, tab: 'basic', armOnOpen: true, coverage: TONE_COVERAGE, wrapPadding: 24 };
   mocked.readLasso.mockResolvedValue({ rect: RECT, liveRect: RECT, recipe: null, count: 3, recipes: 0 });
 });
 

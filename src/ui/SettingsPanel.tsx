@@ -1,19 +1,20 @@
 import React from 'react';
 import { PixelRatio, Pressable, StyleSheet, Text, View } from 'react-native';
-import { coverage, GAP_STEPS, HATCH_SHARE, TONE_GAP, TONES, WEIGHT_WIDTH, widthPx, type Tone } from '../render/style';
+import { COVERAGE_MAX, COVERAGE_MIN, HATCH_SHARE, hatchGap, TONE_COVERAGE, TONES, WEIGHT_WIDTH, widthPx, type Tone } from '../render/style';
 import { INK, PANEL_LEFT, PANEL_MARGIN_Y, PANEL_WIDTH, PAPER, RULE } from './theme';
 import { PADDING_STEPS, WRAP_PADDING } from './wrap';
 
 export type SettingsPanelProps = {
-  gaps: Record<Tone, number>;
+  coverage: Record<Tone, number>;
   wrapPadding: number;
-  onChange(change: { gaps?: Record<Tone, number>; wrapPadding?: number }): void;
+  onChange(change: { coverage?: Record<Tone, number>; wrapPadding?: number }): void;
   onBack(): void;
   onClose(): void;
 };
 
 const TONE_LABEL: Record<Tone, string> = { light: 'Light', dark: 'Dark', black: 'Black' };
 const SWATCH = { w: 96, h: 36 };
+const COVERAGE_STEPS = Array.from({ length: COVERAGE_MAX - COVERAGE_MIN + 1 }, (_, i) => COVERAGE_MIN + i);
 
 /** Manta px to mm at 300 ppi. */
 const mm = (px: number) => Math.round((px * 25.4) / 300);
@@ -39,7 +40,7 @@ function Swatch({ gap }: { gap: number }) {
   );
 }
 
-function Stepper<T extends number>({ id, steps, value, label, onStep }: { id: string; steps: readonly T[]; value: T; label: string; onStep(v: T): void }) {
+function Stepper({ id, steps, value, label, onStep }: { id: string; steps: readonly number[]; value: number; label: string; onStep(v: number): void }) {
   const i = Math.max(0, steps.indexOf(value));
   const button = (to: number, text: string, side: string) => {
     const off = to < 0 || to >= steps.length;
@@ -66,7 +67,7 @@ function Stepper<T extends number>({ id, steps, value, label, onStep }: { id: st
   );
 }
 
-export default function SettingsPanel({ gaps, wrapPadding, onChange, onBack, onClose }: SettingsPanelProps) {
+export default function SettingsPanel({ coverage, wrapPadding, onChange, onBack, onClose }: SettingsPanelProps) {
   return (
     <View style={styles.panel}>
       <View style={styles.header}>
@@ -83,13 +84,13 @@ export default function SettingsPanel({ gaps, wrapPadding, onChange, onBack, onC
       {TONES.map(tone => (
         <View key={tone} style={styles.row}>
           <Text style={styles.label}>{TONE_LABEL[tone]}</Text>
-          <Swatch gap={gaps[tone]} />
+          <Swatch gap={hatchGap(coverage[tone])} />
           <Stepper
             id={`gap-${tone}`}
-            steps={GAP_STEPS}
-            value={gaps[tone] as (typeof GAP_STEPS)[number]}
-            label={`${coverage(gaps[tone])} %`}
-            onStep={g => onChange({ gaps: { ...gaps, [tone]: g } })}
+            steps={COVERAGE_STEPS}
+            value={coverage[tone]}
+            label={`${coverage[tone]} %`}
+            onStep={c => onChange({ coverage: { ...coverage, [tone]: c } })}
           />
         </View>
       ))}
@@ -100,7 +101,7 @@ export default function SettingsPanel({ gaps, wrapPadding, onChange, onBack, onC
         <Stepper
           id="wrap-padding"
           steps={PADDING_STEPS}
-          value={wrapPadding as (typeof PADDING_STEPS)[number]}
+          value={wrapPadding}
           label={`${mm(wrapPadding)} mm`}
           onStep={p => onChange({ wrapPadding: p })}
         />
@@ -109,7 +110,7 @@ export default function SettingsPanel({ gaps, wrapPadding, onChange, onBack, onC
       <Pressable
         testID="settings-reset"
         accessibilityRole="button"
-        onPress={() => onChange({ gaps: { ...TONE_GAP }, wrapPadding: WRAP_PADDING })}
+        onPress={() => onChange({ coverage: { ...TONE_COVERAGE }, wrapPadding: WRAP_PADDING })}
         style={[styles.button, styles.reset]}>
         <Text style={styles.buttonText}>Reset to defaults</Text>
       </Pressable>

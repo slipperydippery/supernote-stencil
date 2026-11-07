@@ -3,7 +3,7 @@ import { PixelRatio, StyleSheet, View } from 'react-native';
 import { closeView, currentPage, DEFAULT_SETTINGS, insertPlan, loadSettings, saveSettings, selectRect, type PageCtx, type Settings } from '../device';
 import { renderShape } from '../render/plan';
 import { gapField, type Recipe } from '../render/recipe';
-import type { Style } from '../render/style';
+import { hatchGap, type Style } from '../render/style';
 import { SHAPES, type Box, type Family, type ShapeDef } from '../shapes';
 import Message from './Message';
 import Panel from './Panel';
@@ -65,8 +65,8 @@ export default function PlaceFlow() {
     busy.current = true;
     setMode('busy');
     try {
-      const { style, gaps } = latest.current;
-      const gap = gaps[style.tone];
+      const { style, coverage } = latest.current;
+      const gap = hatchGap(coverage[style.tone]);
       const target = kind === 'tap' ? defaultBoxAt(shape, box, ctx) : fitBox(shape, box);
       const seed = Math.floor(Math.random() * 1_000_000);
       const flip = flipFor(shape, target);
@@ -103,7 +103,7 @@ export default function PlaceFlow() {
       )}
       {mode === 'settings' && (
         <SettingsPanel
-          gaps={settings.gaps}
+          coverage={settings.coverage}
           wrapPadding={settings.wrapPadding}
           onChange={change => persist({ ...latest.current, ...change })}
           onBack={() => setMode('panel')}

@@ -16,23 +16,26 @@ export const LOOKS: Look[] = ['clean', 'hand'];
 
 /** Pen colour of a solid fill: the device has two greys and black. */
 export const TONE_COLOR: Record<Tone, 0 | 157 | 201> = { light: 201, dark: 157, black: 0 };
-/**
- * Perpendicular gap between hatch lines in page px, 4 / 11 / 21 % ink
- * coverage at the normal-weight hatch line. A constant, not a function of the
- * box: the same style must read the same on a tall box and a wide one (GH-20).
- */
-export const TONE_GAP: Record<Tone, number> = { light: 68, dark: 25, black: 13 };
-
 /** Hatch line width as a share of the shape's weight width. */
 export const HATCH_SHARE = 0.45;
 
-/** The hatch gaps a setting can step through, sparsest first: 2–30 % coverage. */
-export const GAP_STEPS = [135, 90, 68, 45, 34, 25, 18, 13, 9] as const;
+/** Hatch ink coverage in percent per tone, and the range a setting can step through in 1 % steps. */
+export const TONE_COVERAGE: Record<Tone, number> = { light: 4, dark: 11, black: 21 };
+export const COVERAGE_MIN = 1;
+export const COVERAGE_MAX = 66;
 
-/** Ink coverage in percent of a hatch gap, at the normal-weight hatch line. */
-export function coverage(gap: number): number {
-  return Math.round((widthPx(HATCH_SHARE * WEIGHT_WIDTH.normal) / gap) * 100);
+/**
+ * Perpendicular gap in page px between hatch lines that cover `percent` of
+ * the area, at the normal-weight hatch line. A constant per tone, not a
+ * function of the box: the same style must read the same on a tall box and a
+ * wide one (GH-20).
+ */
+export function hatchGap(percent: number): number {
+  return (widthPx(HATCH_SHARE * WEIGHT_WIDTH.normal) * 100) / percent;
 }
+
+/** The built-in gaps, about 68 / 25 / 13 px. */
+export const TONE_GAP = Object.fromEntries(TONES.map(t => [t, hatchGap(TONE_COVERAGE[t])])) as Record<Tone, number>;
 
 /** Approximate page px for an internal width on a Manta (0.5 mm ≈ 600 ≈ 6 px). */
 export function widthPx(width: number): number {

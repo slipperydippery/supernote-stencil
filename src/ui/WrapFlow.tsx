@@ -3,7 +3,7 @@ import { StyleSheet, View } from 'react-native';
 import { closeView, currentPage, DEFAULT_SETTINGS, insertPlan, loadSettings, saveSettings, selectRect, type PageCtx, type Settings } from '../device';
 import { renderShape } from '../render/plan';
 import { gapField, type Recipe } from '../render/recipe';
-import type { Style } from '../render/style';
+import { hatchGap, type Style } from '../render/style';
 import type { Box, Family, ShapeDef } from '../shapes';
 import Message from './Message';
 import Panel from './Panel';
@@ -55,8 +55,8 @@ export default function WrapFlow({ selection }: { selection: Box }) {
     busy.current = true;
     setMode('busy');
     try {
-      const { style, gaps, wrapPadding } = latest.current;
-      const gap = gaps[style.tone];
+      const { style, coverage, wrapPadding } = latest.current;
+      const gap = hatchGap(coverage[style.tone]);
       const box = wrapBox(def, selection, wrapPadding * ctx.unit);
       const seed = Math.floor(Math.random() * 1_000_000);
       const recipe: Recipe = { v: 1, shape: def.id, style, seed, ...gapField(style, gap) };

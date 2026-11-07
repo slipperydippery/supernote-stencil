@@ -1,17 +1,17 @@
 import type { PageCtx, Settings } from '../src/device';
 import type { Recipe } from '../src/render/recipe';
-import { DEFAULT_STYLE, TONE_GAP } from '../src/render/style';
+import { DEFAULT_STYLE, TONE_COVERAGE } from '../src/render/style';
 
 /** Shared state behind the jest.mock('../src/device') factory in the UI suites. */
 export const device = {
   ctx: { notePath: '/note/a.note', page: 1, width: 1920, height: 2560, unit: 1 } as PageCtx,
-  settings: { style: DEFAULT_STYLE, lastShape: null, tab: 'basic', armOnOpen: true, gaps: TONE_GAP, wrapPadding: 24 } as Settings,
+  settings: { style: DEFAULT_STYLE, lastShape: null, tab: 'basic', armOnOpen: true, coverage: TONE_COVERAGE, wrapPadding: 24 } as Settings,
   log: [] as string[],
 };
 
 export function deviceMock() {
   return {
-    DEFAULT_SETTINGS: { style: DEFAULT_STYLE, lastShape: null, tab: 'basic', armOnOpen: true, gaps: TONE_GAP, wrapPadding: 24 },
+    DEFAULT_SETTINGS: { style: DEFAULT_STYLE, lastShape: null, tab: 'basic', armOnOpen: true, coverage: TONE_COVERAGE, wrapPadding: 24 },
     currentPage: jest.fn(() => Promise.resolve(device.ctx)),
     loadSettings: jest.fn(() => Promise.resolve(device.settings)),
     saveSettings: jest.fn(() => {

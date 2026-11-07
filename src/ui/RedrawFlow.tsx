@@ -3,7 +3,7 @@ import { StyleSheet, View } from 'react-native';
 import { closeView, currentPage, DEFAULT_SETTINGS, loadSettings, replaceLasso, selectRect, type PageCtx } from '../device';
 import { renderShape } from '../render/plan';
 import { gapField, redrawGap, type Recipe } from '../render/recipe';
-import { WEIGHT_WIDTH, type Style, type Tone } from '../render/style';
+import { hatchGap, TONES, WEIGHT_WIDTH, type Style, type Tone } from '../render/style';
 import { SHAPES, type Box } from '../shapes';
 import Message from './Message';
 import { applyFlip, redrawBox } from './redraw';
@@ -20,7 +20,7 @@ export default function RedrawFlow({ selection }: { selection: Selection }) {
   const mixed = selection.recipes !== selection.count;
   const [ctx, setCtx] = useState<PageCtx | null>(null);
   const [style, setStyle] = useState<Style>(selection.recipe.style);
-  const [gaps, setGaps] = useState<Record<Tone, number>>(DEFAULT_SETTINGS.gaps);
+  const [coverage, setCoverage] = useState<Record<Tone, number>>(DEFAULT_SETTINGS.coverage);
   const [mode, setMode] = useState<Mode>('loading');
   const [error, setError] = useState('');
   const busy = useRef(false);
@@ -37,7 +37,7 @@ export default function RedrawFlow({ selection }: { selection: Selection }) {
     Promise.all([currentPage(), loadSettings()])
       .then(([c, s]) => {
         setCtx(c);
-        setGaps(s.gaps);
+        setCoverage(s.coverage);
         setMode('strip');
       })
       .catch(fail);
@@ -53,6 +53,7 @@ export default function RedrawFlow({ selection }: { selection: Selection }) {
     setMode('busy');
     try {
       const box = redrawBox(selection.liveRect, WEIGHT_WIDTH[style.weight]);
+      const gaps = Object.fromEntries(TONES.map(t => [t, hatchGap(coverage[t])])) as Record<Tone, number>;
       const gap = redrawGap(selection.recipe, style, gaps);
       const { gap: _old, ...kept } = selection.recipe;
       const recipe: Recipe = { ...kept, style, ...gapField(style, gap) }; // seed is kept
