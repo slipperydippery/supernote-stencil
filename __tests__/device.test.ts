@@ -65,6 +65,10 @@ jest.mock('sn-plugin-lib', () => {
         record('deleteLassoElements');
         return mockOk(true);
       }),
+      deletePageElements: jest.fn((nums: number[], page: number) => {
+        record(`deletePageElements:${nums.join(',')}@${page}`);
+        return mockOk(true);
+      }),
       // Like the SDK's RectSchema: integer coordinates only.
       lassoElements: jest.fn((r: Record<string, number>) => {
         record('lassoElements');
@@ -126,7 +130,7 @@ jest.mock('sn-plugin-lib', () => {
 });
 
 import { PluginCommAPI } from 'sn-plugin-lib';
-import { currentPage, DEFAULT_SETTINGS, insertPlan, loadSettings, readLasso, replaceLasso, saveSettings, selectRect } from '../src/device';
+import { currentPage, DEFAULT_SETTINGS, insertPlan, loadSettings, readLasso, replaceElements, replaceLasso, saveSettings, selectRect } from '../src/device';
 import type { Settings } from '../src/device';
 
 const ctx = { notePath: '/note/a.note', page: 2, width: 1920, height: 2560, unit: 1 };
@@ -231,7 +235,7 @@ describe('readLasso', () => {
       { uuid: 'b', userData: tag },
     ];
     const res = await readLasso();
-    expect(res).toEqual({ rect: mockState.lassoRect, liveRect: mockState.lassoPreviewRect, recipe, count: 2, recipes: 1 });
+    expect(res).toEqual({ rect: mockState.lassoRect, liveRect: mockState.lassoPreviewRect, recipe, count: 2, recipes: 1, shapes: 1, own: null });
     expect(mockState.log[0]).toBe('clearElementCache');
     expect(mockState.log).toEqual(expect.arrayContaining(['recycle:a', 'recycle:b']));
   });
@@ -269,6 +273,51 @@ describe('readLasso', () => {
     expect(res.liveRect).toEqual({ left: 0, top: 0, right: 150, bottom: 100 });
   });
 
+  const pts = (list: { x: number; y: number }[]) => ({ size: () => Promise.resolve(list.length), getRange: (i: number, n: number) => Promise.resolve(list.slice(i, i + n)) });
+
+  it("leaves own empty when the selection holds only the shape", async () => {
+    mockState.lassoElements = [
+      { uuid: 'a', userData: tag, numInPage: 1, stroke: { points: pts([{ x: 0, y: 0 }]) } },
+      { uuid: 'b', userData: tag, numInPage: 2, stroke: { points: pts([{ x: 9, y: 9 }]) } },
+    ];
+    const res = await readLasso();
+    expect(res.own).toBeNull();
+    expect(res.shapes).toBe(1);
+  });
+
+  it("gives the shape's element numbers and point bounds when other ink was selected with it", async () => {
+    mockState.lassoElements = [
+      { uuid: 'ink', userData: '', numInPage: 1, stroke: { points: pts([{ x: 0, y: 0 }, { x: 999, y: 999 }]) } },
+      { uuid: 'a', userData: tag, numInPage: 5, stroke: { points: pts([{ x: 110, y: 140 }, { x: 180, y: 120 }]) } },
+      { uuid: 'g', userData: tag, numInPage: 7, geometry: { points: [{ x: 100, y: 130 }, { x: 200, y: 210 }] } },
+    ];
+    const res = await readLasso();
+    expect(res.recipes).toBe(2);
+    expect(res.own).toEqual({ nums: [5, 7], box: { left: 100, top: 120, right: 200, bottom: 210 } });
+  });
+
+  it('counts two placements with the same shape and style as two shapes', async () => {
+    const other = tag.replace(/"seed":\d+/, '"seed":999999');
+    mockState.lassoElements = [
+      { uuid: 'a', userData: tag, numInPage: 1 },
+      { uuid: 'b', userData: other, numInPage: 2 },
+      { uuid: 'c', userData: other, numInPage: 3 },
+    ];
+    const res = await readLasso();
+    expect(res.shapes).toBe(2);
+    expect(res.recipe).toEqual(recipe);
+    expect(res.recipes).toBe(1);
+    expect(res.own).toBeNull();
+  });
+
+  it('leaves own empty when an element number is missing', async () => {
+    mockState.lassoElements = [
+      { uuid: 'ink', userData: '' },
+      { uuid: 'a', userData: tag, stroke: { points: pts([{ x: 1, y: 1 }]) } },
+    ];
+    expect((await readLasso()).own).toBeNull();
+  });
+
   it('falls back to rect when generateLassoPreview fails', async () => {
     mockState.lassoPreviewFails = true;
     const res = await readLasso();
@@ -281,6 +330,14 @@ describe('replaceLasso', () => {
     await replaceLasso(ctx, plan, recipe);
     const order = mockState.log.filter(l => /^(deleteLassoElements|createElement|insertPageElements)/.test(l));
     expect(order).toEqual(['deleteLassoElements', 'createElement:0', 'createElement:0', 'createElement:700', 'insertPageElements']);
+  });
+});
+
+describe('replaceElements', () => {
+  it('deletes only the listed elements on the page before creating and inserting', async () => {
+    await replaceElements(ctx, [5, 7], plan, recipe);
+    const order = mockState.log.filter(l => /^(delete|createElement|insertPageElements)/.test(l));
+    expect(order).toEqual([`deletePageElements:5,7@${ctx.page}`, 'createElement:0', 'createElement:0', 'createElement:700', 'insertPageElements']);
   });
 });
 

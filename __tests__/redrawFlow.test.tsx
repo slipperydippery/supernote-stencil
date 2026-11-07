@@ -10,6 +10,7 @@ jest.mock('../src/render/plan', () => {
 
 import * as dev from '../src/device';
 import { renderShape } from '../src/render/plan';
+import type { LassoSelection } from '../src/device';
 import type { Recipe } from '../src/render/recipe';
 import { DEFAULT_STYLE, hatchGap, TONE_GAP } from '../src/render/style';
 import RedrawFlow from '../src/ui/RedrawFlow';
@@ -19,10 +20,10 @@ const mocked = dev as unknown as ReturnType<typeof deviceMock>;
 const LIVE_RECT = { left: 100, top: 100, right: 500, bottom: 300 };
 const RECIPE: Recipe = { v: 1, shape: 'rectangle', style: DEFAULT_STYLE, seed: 42 };
 
-type Selection = { rect: typeof LIVE_RECT; liveRect: typeof LIVE_RECT; recipe: Recipe; count: number; recipes: number };
+type Selection = LassoSelection & { recipe: Recipe };
 
 function selection(overrides: Partial<Selection> = {}): Selection {
-  return { rect: LIVE_RECT, liveRect: LIVE_RECT, recipe: RECIPE, count: 1, recipes: 1, ...overrides };
+  return { rect: LIVE_RECT, liveRect: LIVE_RECT, recipe: RECIPE, count: 1, recipes: 1, shapes: 1, own: null, ...overrides };
 }
 
 async function open(sel: Selection = selection()): Promise<ReactTestRenderer> {
@@ -52,11 +53,42 @@ it('shows the strip armed with the recipe shape and style, with an apply mark', 
   expect(has(r, 'strip-action')).toBe(true);
 });
 
-it('refuses a mixed selection before any destructive call', async () => {
+it('refuses a mixed selection whose own elements could not be read, before any destructive call', async () => {
   const r = await open(selection({ count: 5, recipes: 4 }));
   expect(JSON.stringify(r.toJSON())).toContain('Select only the Stencil shape to redraw');
   expect(has(r, 'strip-action')).toBe(false);
   expect(mocked.replaceLasso).not.toHaveBeenCalled();
+});
+
+const OWN = { nums: [3, 4], box: { left: 120, top: 130, right: 220, bottom: 230 } };
+
+it('warns about two shapes and touches nothing', async () => {
+  const r = await open(selection({ count: 4, recipes: 2, shapes: 2 }));
+  expect(JSON.stringify(r.toJSON())).toContain('2 Stencil shapes selected: select one to redraw');
+  expect(has(r, 'strip-action')).toBe(false);
+  expect(mocked.replaceLasso).not.toHaveBeenCalled();
+  expect(mocked.replaceElements).not.toHaveBeenCalled();
+});
+
+it("redraws only the shape's own elements into their bounds when other ink was selected too", async () => {
+  const r = await open(selection({ count: 5, recipes: 2, own: OWN }));
+  await press(r, 'strip-action');
+  expect((renderShape as jest.Mock).mock.calls[0][1]).toEqual(OWN.box);
+  const [, nums, plan] = mocked.replaceElements.mock.calls[0] as any[];
+  expect(nums).toEqual([3, 4]);
+  expect(mocked.replaceLasso).not.toHaveBeenCalled();
+  expect(mocked.selectRect).toHaveBeenCalledWith(plan.bounds, plan.strokes.length + plan.geometries.length);
+});
+
+it('refuses a mixed selection with a pending move or stretch', async () => {
+  const r = await open(selection({ count: 5, recipes: 2, own: OWN, liveRect: { ...LIVE_RECT, right: 600 } }));
+  expect(JSON.stringify(r.toJSON())).toContain('on its own');
+  expect(has(r, 'strip-action')).toBe(false);
+});
+
+it('takes a preview box within 2 px of the lasso rect as no transform', async () => {
+  const r = await open(selection({ count: 5, recipes: 2, own: OWN, liveRect: { ...LIVE_RECT, right: 502 } }));
+  expect(has(r, 'strip-action')).toBe(true);
 });
 
 it('regenerates with the same seed into the deflated lasso box, then selects the result', async () => {

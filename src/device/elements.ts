@@ -68,27 +68,69 @@ export function insertPlan(ctx: PageCtx, plan: Plan, recipe: Recipe): Promise<Bo
   return insertTagged(ctx, plan, serializeRecipe(recipe));
 }
 
+export type LassoSelection = {
+  rect: Box;
+  liveRect: Box;
+  recipe: Recipe | null;
+  count: number;
+  /** Elements of the recipe's shape. */
+  recipes: number;
+  /** Distinct Stencil shapes in the selection. */
+  shapes: number;
+  /** The one shape's elements and the bounds of their points, when other elements were selected with it. */
+  own: { nums: number[]; box: Box } | null;
+};
+
+/** Bounds of the elements' centrelines, not inflated by stroke width. */
+async function pointBounds(elements: any[]): Promise<Box | null> {
+  const b = { left: Infinity, top: Infinity, right: -Infinity, bottom: -Infinity };
+  const add = (p: { x: number; y: number }) => {
+    b.left = Math.min(b.left, p.x);
+    b.top = Math.min(b.top, p.y);
+    b.right = Math.max(b.right, p.x);
+    b.bottom = Math.max(b.bottom, p.y);
+  };
+  for (const e of elements) {
+    const points = e?.stroke?.points;
+    if (points) {
+      const n = await points.size();
+      if (n > 0) {
+        (await points.getRange(0, n)).forEach(add);
+      }
+    }
+    e?.geometry?.points?.forEach(add);
+  }
+  return Number.isFinite(b.left) ? b : null;
+}
+
 /**
  * `rect` is the visual lasso box, inflated by half the stroke width; callers shrink it.
  * `liveRect` is the current selection box even while a native stretch is pending (`getLassoRect`
  * keeps returning the pre-resize box until the selection is dropped and made again); it falls
  * back to `rect` when `generateLassoPreview` is unavailable or fails.
+ *
+ * Elements of one placement share one `userData` string; its random seed keeps two placements apart.
  */
-export async function readLasso(): Promise<{ rect: Box; liveRect: Box; recipe: Recipe | null; count: number; recipes: number }> {
+export async function readLasso(): Promise<LassoSelection> {
   // The cache can hand out stale elements right after a native move or resize.
   PluginCommAPI.clearElementCache();
   const elements = (await call<any[] | null>('getLassoElements', PluginCommAPI.getLassoElements())) ?? [];
   try {
     const rect = await call<Box>('getLassoRect', PluginCommAPI.getLassoRect());
-    let recipe: Recipe | null = null;
-    let recipes = 0;
+    const groups = new Map<string, any[]>();
     for (const e of elements) {
-      const r = parseRecipe(e?.userData);
-      if (r) {
-        recipes++;
-        if (!recipe) {
-          recipe = r;
-        }
+      if (parseRecipe(e?.userData)) {
+        groups.set(e.userData, [...(groups.get(e.userData) ?? []), e]);
+      }
+    }
+    const [tag, group = []]: [string?, any[]?] = groups.entries().next().value ?? [];
+    const recipe = parseRecipe(tag);
+    let own: LassoSelection['own'] = null;
+    if (groups.size === 1 && group.length < elements.length) {
+      const nums = group.map(e => e.numInPage);
+      const box = await pointBounds(group);
+      if (box && nums.every(n => Number.isInteger(n))) {
+        own = { nums, box };
       }
     }
     let liveRect = rect;
@@ -101,7 +143,7 @@ export async function readLasso(): Promise<{ rect: Box; liveRect: Box; recipe: R
     } catch {
       // generateLassoPreview unavailable or failed; rect from getLassoRect is the best we have.
     }
-    return { rect, liveRect, recipe, count: elements.length, recipes };
+    return { rect, liveRect, recipe, count: elements.length, recipes: group.length, shapes: groups.size, own };
   } finally {
     elements.forEach(recycle);
   }
@@ -109,5 +151,11 @@ export async function readLasso(): Promise<{ rect: Box; liveRect: Box; recipe: R
 
 export async function replaceLasso(ctx: PageCtx, plan: Plan, recipe: Recipe): Promise<Box> {
   await call('deleteLassoElements', PluginCommAPI.deleteLassoElements());
+  return insertPlan(ctx, plan, recipe);
+}
+
+/** Replaces only the listed elements; the rest of the selection stays on the page as it was. */
+export async function replaceElements(ctx: PageCtx, nums: number[], plan: Plan, recipe: Recipe): Promise<Box> {
+  await call('deletePageElements', PluginCommAPI.deletePageElements(nums, ctx.page));
   return insertPlan(ctx, plan, recipe);
 }
