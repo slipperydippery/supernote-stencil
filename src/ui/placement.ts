@@ -13,13 +13,13 @@ function clamp(v: number, lo: number, hi: number): number {
   return Math.min(Math.max(v, lo), Math.max(lo, hi));
 }
 
-/** Default size × ctx.unit, centred on the tap point, moved inside the page. */
+/** Default size × ctx.unit, centred on the tap point, moved inside the page. A rising shape gets top and bottom swapped. */
 export function defaultBoxAt(def: ShapeDef, at: Box, ctx: PageCtx): Box {
   const w = def.defaultSize.w * ctx.unit;
   const h = def.defaultSize.h * ctx.unit;
   const left = clamp((at.left + at.right) / 2 - w / 2, 0, ctx.width - w);
   const top = clamp((at.top + at.bottom) / 2 - h / 2, 0, ctx.height - h);
-  return { left, top, right: left + w, bottom: top + h };
+  return def.rising ? { left, top: top + h, right: left + w, bottom: top } : { left, top, right: left + w, bottom: top + h };
 }
 
 function normalise(b: Box): Box {
@@ -47,7 +47,7 @@ const SYMMETRIC: ReadonlySet<ShapeId> = new Set(['doubleArrow']);
 const DIRECTIONAL: ReadonlySet<ShapeId> = new Set(['arrow', 'arrowDown', 'elbowArrow', 'archArrow', 'scoopArrow']);
 
 /**
- * Set when a directional arrow's drag ran right-to-left or bottom-to-top, so a
+ * Set when a directional arrow's box (a drag, or a rising shape's tap) runs right-to-left or bottom-to-top, so a
  * later redraw into a normalised lasso box can mirror the outline back.
  * Non-directional shapes and an unreversed drag both give `undefined`.
  */

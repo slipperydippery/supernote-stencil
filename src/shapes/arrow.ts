@@ -51,16 +51,9 @@ export const ARROW: ShapeDef[] = [
   },
   {
     id: 'archArrow', family: 'arrow', label: 'Arch arrow', closed: false,
-    defaultSize: { w: 480, h: 240 }, keepAspect: false,
-    // Pen-down-to-pen-up, like elbowArrow: at(f, 0, 0) is shaft[0], at(f, 1, 1) is
-    // the tip. Steep off pen-down, levels off into the head at pen-up.
-    // box.top/box.bottom are literally pen-down.y/pen-up.y (see onPlace in
-    // PlacementLayer.tsx), not "smaller"/"larger" value — an outline that maps
-    // t=0 to box.bottom instead of box.top runs backwards on the y-axis for every
-    // drag, not just reversed ones, since x (t=0 -> box.left, always pen-down.x)
-    // stays correct regardless. A tap places at the default box, which is
-    // normalised (top < bottom), so a tap-placed arch arrow reads top-left to
-    // bottom-right; only a literal bottom-left-to-top-right drag reads that way.
+    defaultSize: { w: 480, h: 240 }, keepAspect: false, rising: true,
+    // Runs from (left, top) to (right, bottom), i.e. pen-down to pen-up like
+    // elbowArrow: steep off pen-down, levelling off into the head.
     outline: box => {
       const f = frame(box);
       const p: Pt[] = [];
@@ -74,9 +67,8 @@ export const ARROW: ShapeDef[] = [
   },
   {
     id: 'scoopArrow', family: 'arrow', label: 'Scoop arrow', closed: false,
-    defaultSize: { w: 480, h: 240 }, keepAspect: false,
-    // The same pen-down-to-pen-up span as archArrow, bowed the other way: flat off
-    // pen-down, steepening into the head at pen-up.
+    defaultSize: { w: 480, h: 240 }, keepAspect: false, rising: true,
+    // archArrow bowed the other way: flat off pen-down, steepening into the head.
     outline: box => {
       const f = frame(box);
       const p: Pt[] = [];

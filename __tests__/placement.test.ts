@@ -22,6 +22,15 @@ describe('defaultBoxAt', () => {
     expect(defaultBoxAt(SHAPES.rectangle, point(10, 2550), ctx)).toEqual({ left: 0, top: 2320, right: 480, bottom: 2560 });
     expect(defaultBoxAt(SHAPES.rectangle, point(1915, 5), ctx)).toEqual({ left: 1440, top: 0, right: 1920, bottom: 240 });
   });
+
+  it('swaps top and bottom for rising shapes, so a tap places them bottom-left to top-right', () => {
+    for (const def of [SHAPES.archArrow, SHAPES.scoopArrow]) {
+      expect(defaultBoxAt(def, point(600, 800), ctx)).toEqual({ left: 360, top: 920, right: 840, bottom: 680 });
+      const shaft = renderShape(def, defaultBoxAt(def, point(600, 800), ctx), DEFAULT_STYLE, 1).geometries[0].points;
+      expect(shaft[0]).toEqual({ x: 360, y: 920 });
+      expect(shaft[shaft.length - 1]).toEqual({ x: 840, y: 680 });
+    }
+  });
 });
 
 describe('fitBox', () => {
@@ -122,5 +131,12 @@ describe('redraw direction fidelity', () => {
     // The lasso always hands back a normalised box, as plan.bounds does here.
     const redrawn = renderShape(def, applyFlip(placed.bounds, flip), DEFAULT_STYLE, 1);
     expect(direction(redrawn.geometries[0].points)).toEqual(direction(placed.geometries[0].points));
+  });
+
+  it.each([['archArrow', SHAPES.archArrow], ['scoopArrow', SHAPES.scoopArrow]])('a tapped %s redraws still rising', (_, def) => {
+    const target = defaultBoxAt(def, point(600, 800), ctx);
+    const placed = renderShape(def, target, DEFAULT_STYLE, 1);
+    const redrawn = renderShape(def, applyFlip(placed.bounds, flipFor(def, target)), DEFAULT_STYLE, 1);
+    expect(direction(redrawn.geometries[0].points)).toEqual({ x: 1, y: -1 });
   });
 });

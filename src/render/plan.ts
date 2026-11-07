@@ -5,7 +5,7 @@
  */
 import type { Box, Pt, ShapeDef, ShapeId } from '../shapes/types';
 import { dashSamples } from './dashes';
-import { fillStrokes } from './fills';
+import { fillStrokes, headStrokes } from './fills';
 import { handDrawnOutline, LOCKED, peakThickness, pressureFromWidth, resample, splitStrokes, toXY } from './hand';
 import { firmwareWidth, WEIGHT_WIDTH, type Style } from './style';
 
@@ -120,6 +120,11 @@ export function renderShape(def: ShapeDef, box: Box, style: Style, seed: number)
 
   if (def.closed && style.fill !== 'none') {
     strokes.push(...fillStrokes(outlines[0], style, width, partSeed(seed, FILL_PART)));
+  }
+  if (!def.closed) {
+    for (const h of outlines.slice(1)) {
+      strokes.push(...headStrokes([...h, h[0]]));
+    }
   }
   if (style.look === 'clean') {
     if (style.line === 'solid') {

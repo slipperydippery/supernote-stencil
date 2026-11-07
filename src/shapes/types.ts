@@ -11,6 +11,8 @@ export type ShapeDef = {
   defaultSize: { w: number; h: number };
   /** true for square and circle: a dragged box is reduced to its shorter side, centred. */
   keepAspect: boolean;
+  /** true for arch and scoop arrows: a tap places them, and the palette shows them, rising from bottom-left to top-right. */
+  rising?: boolean;
   /** Polylines in page px filling `box`. For closed shapes the first polyline is the fill boundary and ends on its first point. */
   outline(box: Box): Pt[][];
 };

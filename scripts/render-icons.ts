@@ -27,7 +27,8 @@ function save(path: string, buf: Buffer) {
 function shapeIcon(id: ShapeId): Buffer {
   const def = SHAPES[id];
   const { w, h } = def.defaultSize;
-  const plan = renderShape(def, { left: 0, top: 0, right: w, bottom: h }, DEFAULT_STYLE, 0);
+  const box = def.rising ? { left: 0, top: h, right: w, bottom: 0 } : { left: 0, top: 0, right: w, bottom: h };
+  const plan = renderShape(def, box, DEFAULT_STYLE, 0);
   const b = plan.bounds;
   const bw = b.right - b.left;
   const bh = b.bottom - b.top;

@@ -89,6 +89,28 @@ describe('renderShape', () => {
     expect(head[3]).toEqual(head[0]);
   });
 
+  it.each(LOOKS)('fills every arrow head solid black inside the head (%s)', look => {
+    for (const def of ALL_IDS.map(id => SHAPES[id]).filter(d => d.family === 'arrow')) {
+      const box = defaultBox(def);
+      const heads = def.outline(box).slice(1).map(h => [...h, h[0]]);
+      const fills = renderShape(def, box, style({ look }), 1).strokes.filter(s => s.penType === 10);
+      expect(fills.length).toBeGreaterThanOrEqual(heads.length * 3);
+      for (const s of fills) {
+        expect(s.penColor).toBe(0);
+        for (const p of s.points) {
+          expect(heads.some(h => inside(h, p))).toBe(true);
+        }
+      }
+    }
+  });
+
+  it('leaves the shape fill style off arrows: only the heads are filled', () => {
+    const def = SHAPES.arrow;
+    const plain = renderShape(def, defaultBox(def), DEFAULT_STYLE, 1);
+    const dark = renderShape(def, defaultBox(def), style({ fill: 'dark' }), 1);
+    expect(dark.strokes).toEqual(plain.strokes);
+  });
+
   it('draws a hand-drawn rectangle as four pen strokes, one per side', () => {
     const box = defaultBox(SHAPES.rectangle);
     const plan = renderShape(SHAPES.rectangle, box, style({ look: 'hand' }), 3);
@@ -183,7 +205,7 @@ describe('renderShape', () => {
     const [, right, left] = def.outline(defaultBox(def));
     const offsets = (head: { x: number; y: number }[]) =>
       plan.strokes
-        .find(s => Math.abs(s.points[Math.floor(s.points.length / 2)].x - head[1].x) < 30)!
+        .find(s => s.penType === 16 && Math.abs(s.points[Math.floor(s.points.length / 2)].x - head[1].x) < 30)!
         .pressures.slice(0, 5);
     expect(offsets(right)).not.toEqual(offsets(left));
   });

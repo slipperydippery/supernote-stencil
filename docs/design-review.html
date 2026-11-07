@@ -163,7 +163,7 @@ ul{padding-left:20px}li{margin:6px 0;max-width:70ch}
     <tr class="changed"><td>Hand-drawn look</td><td>One bow per stroke, width profile, overshoot</td><td>Constants locked at bow 2, swing 0.4, overshoot 3 in preview units. On device the stroke thickness is set to the profile's peak and pressure is mapped through the measured curve, so a hand-drawn shape reads as dark as its clean twin.</td></tr>
     <tr class="changed"><td>Dashes and hatch</td><td>Separate strokes</td><td>Neither the pen-up flag nor zero pressure makes a gap inside one stroke. A dashed box is about forty elements; redraw keeps them one shape.</td></tr>
     <tr><td>Wrap</td><td>Same lasso button, expanded panel</td><td>Lasso handwriting, tap Stencil: the panel opens expanded and tapping a shape wraps the selection at once. Position and size are known, so no strip and no page tap.</td></tr>
-    <tr><td>Families v1</td><td>Basic, Flowchart, Arrows</td><td>Architecture icons deferred. Arrows are dumb: drag sets their length and direction.</td></tr>
+    <tr><td>Families v1</td><td>Basic, Flowchart, Arrows</td><td>Architecture icons deferred. Arrows are dumb: drag sets their length and direction. Heads are solid black whatever the fill. A tap places the arch and scoop arrows rising, bottom-left to top-right.</td></tr>
     <tr><td>Labels</td><td>Handwriting only</td><td>No typed text boxes.</td></tr>
     <tr><td>Audience</td><td>Personal first</td><td>Clean enough to publish later, no localisation or onboarding now. Prior art: sn-shapes, Palette, Snap, all open source.</td></tr>
   </table>
@@ -317,8 +317,8 @@ ul{padding-left:20px}li{margin:6px 0;max-width:70ch}
       {id:'down',name:'arrow down',size:'300',closed:false,lines:()=>[[[W/2,M],[W/2,H-M]],head(W/2,H-M,Math.PI/2,18)]},
       {id:'dbl',name:'double arrow',size:'480',closed:false,lines:()=>[[[M,H/2],[W-M,H/2]],head(W-M,H/2,0,18),head(M,H/2,Math.PI,18)]},
       {id:'elbow',name:'elbow arrow',size:'480 × 240',closed:false,lines:()=>[[[M,M+10],[W/2,M+10],[W/2,H-M-10],[W-M,H-M-10]],head(W-M,H-M-10,0,18)]},
-      {id:'arch',name:'arch arrow',size:'480 × 240',closed:false,lines:()=>{const p=[];for(let i=0;i<=40;i++){const t=i/40;p.push([M+(W-2*M)*t,(M+10)+(H-2*M-20)*Math.sin(t*Math.PI/2)])}const a=Math.atan2(p[40][1]-p[39][1],p[40][0]-p[39][0]);return [p,head(W-M,H-M-10,a,18)]}},
-      {id:'scoop',name:'scoop arrow',size:'480 × 240',closed:false,lines:()=>{const p=[];for(let i=0;i<=40;i++){const t=i/40;p.push([M+(W-2*M)*t,(M+10)+(H-2*M-20)*(1-Math.sin((1-t)*Math.PI/2))])}const a=Math.atan2(p[40][1]-p[39][1],p[40][0]-p[39][0]);return [p,head(W-M,H-M-10,a,18)]}},
+      {id:'arch',name:'arch arrow',size:'480 × 240',closed:false,lines:()=>{const p=[];for(let i=0;i<=40;i++){const t=i/40;p.push([M+(W-2*M)*t,(H-M-10)-(H-2*M-20)*Math.sin(t*Math.PI/2)])}const a=Math.atan2(p[40][1]-p[39][1],p[40][0]-p[39][0]);return [p,head(W-M,M+10,a,18)]}},
+      {id:'scoop',name:'scoop arrow',size:'480 × 240',closed:false,lines:()=>{const p=[];for(let i=0;i<=40;i++){const t=i/40;p.push([M+(W-2*M)*t,(H-M-10)-(H-2*M-20)*(1-Math.sin((1-t)*Math.PI/2))])}const a=Math.atan2(p[40][1]-p[39][1],p[40][0]-p[39][0]);return [p,head(W-M,M+10,a,18)]}},
     ]
   };
 
@@ -427,6 +427,7 @@ ul{padding-left:20px}li{margin:6px 0;max-width:70ch}
         s+=`<path d="${outlineD(lines[0])}" fill="${col}"/>`;
       }
     }
+    if(!shape.closed)for(const hd of lines.slice(1))s+=`<path d="${outlineD([...hd,hd[0]])}" fill="#111"/>`;
     const on=style.line==='dashed'?base*4.2:0,off=base*2.8;
     for(const ln of lines){
       const strokes=sketch?splitStrokes(ln,shape.closed).flatMap(st=>splitLong(st,shape.penLen||130)):[ln];
