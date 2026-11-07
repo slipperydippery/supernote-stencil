@@ -1,6 +1,6 @@
 # Stencil — Supernote plugin
 
-Stencil places diagram shapes on a Supernote page with the pen — flowchart boxes, basic shapes and arrows, clean or hand-drawn — sized by a tap or a drag and never scaled afterwards. A lassoed handwritten sketch can be wrapped in a shape, and a placed shape can be redrawn into a new box. Design review: https://claude.ai/artifact/DMhjxZZxt8c6xKaThKt88d
+Stencil places diagram shapes on a Supernote page with the pen — flowchart boxes, basic shapes and arrows, clean or hand-drawn — sized by a tap or a drag and never scaled afterwards. A lassoed handwritten sketch can be wrapped in a shape, and a placed shape can be redrawn into a new box. Design review: [docs/design-review.html](docs/design-review.html).
 
 ## Install
 
@@ -127,3 +127,7 @@ Device run of 2026-11-05 on a Manta, firmware current at that date. Observed on 
 Design consequence (decided 2026-11-05): tap or drag to place with a transparent full-screen layer, wrap a selection, and a lasso-toolbar "redraw" that regenerates a Stencil shape at the lasso box from a recipe stored in `Element.userData`. Centred insert is dropped.
 
 Consequences for the build: clean look on pen 10, hand-drawn look on pen 16, dashes and hatch as separate strokes, no stroke metadata, inserts through `insertPageElements` (no save and reload), widths in the internal unit with a fractional part.
+
+## License
+
+MIT, see [LICENSE](LICENSE).
