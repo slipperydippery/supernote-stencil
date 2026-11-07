@@ -9,7 +9,8 @@
     "start": "react-native start",
     "test": "jest",
     "typecheck": "tsc --noEmit",
-    "icons": "npx tsx scripts/render-icons.ts"
+    "icons": "npx tsx scripts/render-icons.ts",
+    "listing": "npx tsx scripts/render-listing.ts"
   },
   "dependencies": {
     "react": "19.0.0",
