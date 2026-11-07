@@ -109,8 +109,8 @@ describe('renderShape', () => {
   it('leaves the shape fill style off arrows: only the heads are filled', () => {
     const def = SHAPES.arrow;
     const plain = renderShape(def, defaultBox(def), DEFAULT_STYLE, 1);
-    const dark = renderShape(def, defaultBox(def), style({ fill: 'dark' }), 1);
-    expect(dark.strokes).toEqual(plain.strokes);
+    const filled = renderShape(def, defaultBox(def), style({ fill: 'solid', tone: 'black' }), 1);
+    expect(filled.strokes).toEqual(plain.strokes);
   });
 
   it('draws a long hand-drawn arrow shaft in one pass per corner-to-corner run', () => {
