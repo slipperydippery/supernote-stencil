@@ -80,14 +80,6 @@ it("redraws only the shape's own elements into their bounds when other ink was s
   expect(mocked.selectRect).toHaveBeenCalledWith(plan.bounds, plan.strokes.length + plan.geometries.length);
 });
 
-it('redraws the whole shape when only part of it was selected', async () => {
-  const r = await open(selection({ count: 2, recipes: 2, own: { nums: [3, 4, 5, 6], box: OWN.box } }));
-  await press(r, 'strip-action');
-  expect((renderShape as jest.Mock).mock.calls[0][1]).toEqual(OWN.box);
-  expect((mocked.replaceElements.mock.calls[0] as any[])[1]).toEqual([3, 4, 5, 6]);
-  expect(mocked.replaceLasso).not.toHaveBeenCalled();
-});
-
 it('refuses a mixed selection with a pending move or stretch', async () => {
   const r = await open(selection({ count: 5, recipes: 2, own: OWN, liveRect: { ...LIVE_RECT, right: 600 } }));
   expect(JSON.stringify(r.toJSON())).toContain('on its own');

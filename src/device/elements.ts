@@ -1,8 +1,8 @@
-import { Element, PluginCommAPI, PluginFileAPI, PluginManager } from 'sn-plugin-lib';
+import { Element, PluginCommAPI, PluginManager } from 'sn-plugin-lib';
 import type { Plan } from '../render/plan';
 import { parseRecipe, serializeRecipe, type Recipe } from '../render/recipe';
 import type { Box } from '../shapes';
-import { currentPage, type PageCtx } from './page';
+import type { PageCtx } from './page';
 import { call, recycle } from './sdk';
 
 /** Integer widths render as hairlines (finding "thickness unit"), so always carry a fraction. */
@@ -77,10 +77,7 @@ export type LassoSelection = {
   recipes: number;
   /** Distinct Stencil shapes in the selection. */
   shapes: number;
-  /**
-   * The one shape's elements and the bounds of their points, when they differ from the selection:
-   * other elements were selected with it, or only part of it was.
-   */
+  /** The one shape's elements and the bounds of their points, when other elements were selected with it. */
   own: { nums: number[]; box: Box } | null;
 };
 
@@ -107,28 +104,6 @@ async function pointBounds(elements: any[]): Promise<Box | null> {
 }
 
 /**
- * The page's elements carrying `tag`, but only when the page read agrees with the lasso: every
- * lassoed element of the shape must be among them under the same number. Inserts reach the page
- * read only once the note is saved, so a fresh shape fails this, and a stale numbering must never
- * drive a delete.
- */
-async function pageGroup(tag: string, lassoed: number[]): Promise<{ nums: number[]; box: Box } | null> {
-  const { notePath, page } = await currentPage();
-  const elements = (await call<any[] | null>('getElements', PluginFileAPI.getElements(page, notePath))) ?? [];
-  try {
-    const group = elements.filter(e => e?.userData === tag);
-    const nums = group.map(e => e.numInPage);
-    if (!lassoed.every(n => nums.includes(n))) {
-      return null;
-    }
-    const box = await pointBounds(group);
-    return box ? { nums, box } : null;
-  } finally {
-    elements.forEach(recycle);
-  }
-}
-
-/**
  * `rect` is the visual lasso box, inflated by half the stroke width; callers shrink it.
  * `liveRect` is the current selection box even while a native stretch is pending (`getLassoRect`
  * keeps returning the pre-resize box until the selection is dropped and made again); it falls
@@ -151,17 +126,11 @@ export async function readLasso(): Promise<LassoSelection> {
     const [tag, group = []]: [string?, any[]?] = groups.entries().next().value ?? [];
     const recipe = parseRecipe(tag);
     let own: LassoSelection['own'] = null;
-    const nums: number[] = group.map(e => e.numInPage);
-    if (groups.size === 1 && nums.every(n => Number.isInteger(n))) {
-      const whole = await pageGroup(tag!, nums).catch(e => {
-        console.warn('page read failed; redrawing the selection only', e);
-        return null;
-      });
-      if (whole && whole.nums.length > nums.length) {
-        own = whole;
-      } else if (group.length < elements.length) {
-        const box = await pointBounds(group);
-        own = box ? { nums, box } : null;
+    if (groups.size === 1 && group.length < elements.length) {
+      const nums = group.map(e => e.numInPage);
+      const box = await pointBounds(group);
+      if (box && nums.every(n => Number.isInteger(n))) {
+        own = { nums, box };
       }
     }
     let liveRect = rect;
