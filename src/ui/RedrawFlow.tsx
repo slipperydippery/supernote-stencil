@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { closeView, currentPage, DEFAULT_SETTINGS, loadSettings, replaceElements, replaceLasso, selectRect, type LassoSelection, type PageCtx } from '../device';
+import { closeView, currentPage, DEFAULT_SETTINGS, loadSettings, replaceElements, replaceLasso, replaceWhole, selectRect, type LassoSelection, type PageCtx } from '../device';
 import { renderShape } from '../render/plan';
 import { gapField, redrawGap, type Recipe } from '../render/recipe';
 import { hatchGap, TONES, WEIGHT_WIDTH, type Style, type Tone } from '../render/style';
@@ -16,21 +16,18 @@ type Selection = LassoSelection & { recipe: Recipe };
 const noop = () => {};
 
 /**
- * Other elements in the selection are left alone, but only while nothing is pending: whether lasso
- * points are read before or after a native move or stretch is unmeasured.
+ * The shape's own elements are replaced apart from the selection only while nothing is pending:
+ * whether lasso points are read before or after a native move or stretch is unmeasured.
  */
 function refuse(sel: Selection): string | null {
   if (sel.shapes > 1) {
     return `${sel.shapes} Stencil shapes selected: select one to redraw`;
   }
-  if (sel.recipes === sel.count) {
-    return null;
+  if (sel.own) {
+    return moved(sel.rect, sel.liveRect) ? 'To move or stretch, lasso the whole Stencil shape on its own' : null;
   }
-  if (!sel.own) {
+  if (sel.recipes !== sel.count) {
     return 'Select only the Stencil shape to redraw';
-  }
-  if (moved(sel.rect, sel.liveRect)) {
-    return 'Move or stretch the Stencil shape on its own to redraw it';
   }
   return null;
 }
@@ -79,7 +76,11 @@ export default function RedrawFlow({ selection }: { selection: Selection }) {
       const { gap: _old, ...kept } = selection.recipe;
       const recipe: Recipe = { ...kept, style, ...gapField(style, gap) }; // seed is kept
       const plan = renderShape(def, applyFlip(box, recipe.flip), style, recipe.seed, gap);
-      const bounds = own ? await replaceElements(ctx, own.nums, plan, recipe) : await replaceLasso(ctx, plan, recipe);
+      const bounds = own?.tag
+        ? await replaceWhole(ctx, own.tag, own.nums.length, own.box, plan, recipe)
+        : own
+          ? await replaceElements(ctx, own.nums, plan, recipe)
+          : await replaceLasso(ctx, plan, recipe);
       await selectRect(bounds, plan.strokes.length + plan.geometries.length);
     } catch (e) {
       busy.current = false;

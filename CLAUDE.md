@@ -32,6 +32,7 @@ The measured findings live in `README.md` ("Results" table). The ones that shape
 - Insert through `PluginCommAPI.insertPageElements`; never `saveCurrentNote` + `reloadFile` around an insert.
 - Native lasso scaling degrades shapes; shapes are sized at insert and regenerated from the recipe in `Element.userData`.
 - Close the plugin view before `lassoElements`, with no timer in between: JS timers do not fire while the view is closed.
+- Delete only elements inside the current lasso: `deletePageElements` on anything outside it unbinds the note (error 105, note closes).
 - Touch dp × `PixelRatio.get()` = page px.
 
 ## Design record

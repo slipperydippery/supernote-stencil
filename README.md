@@ -44,7 +44,7 @@ A hatched shape records the spacing it was drawn with, so changing the setting n
 
 Lasso a placed Stencil shape, pull the native resize handle to the size you want, then tap **Stencil** on the lasso toolbar. The strip reappears armed with that shape's recipe — restyle if you like, then tap the check mark. The degraded ink is deleted and the shape is rendered fresh into the lasso box.
 
-Other ink caught in the lasso is left alone: only the shape's own elements are replaced, at their own size. That works only while the selection hasn't been moved or stretched; to resize, lasso the shape by itself. A selection holding two Stencil shapes is refused with a notice and nothing is touched.
+Other ink caught in the lasso is left alone: only the shape's own elements are replaced, at their own size. Lassoing part of a shape (a few dashes of an arrow) restyles the whole shape: the plugin finds the rest through a page read, lassoes the whole shape, and redraws it. When the page read doesn't hold the lassoed elements under the same numbers (possibly a shape placed since the note was last saved), it redraws the selection alone. Both work only while the selection hasn't been moved or stretched; to resize, lasso the whole shape by itself. A selection holding two Stencil shapes is refused with a notice and nothing is touched.
 
 ## Style bar glyphs
 
@@ -122,6 +122,7 @@ Device run of 2026-11-05 on a Manta, firmware current at that date. Observed on 
 | listFiles, PR 3 device run | objects, not strings | `FileUtils.listFiles` returns `[{ type, path }]` on a Manta although the SDK types it as `string[]`. `makeDir`, `exists` and `deleteDir` in the plugin dir all return `true`. |
 | select only the insert, PR 3 spike | not possible | `showLassoAfterInsert: true` on a geometry inserted through `insertPageElements` selects nothing, before or after `closePluginView` (`getLassoElements` → 904, "No lasso action has been performed"). `lassoElements` only takes a rect, so a placed shape is selected together with anything inside its box. |
 | redraw after native stretch, PR 5 device run | pass | PR #12 merged after D1 and D6: deleteLassoElements removed the stretched ink while the transform was pending, and the live box from generateLassoPreview gave the new size; an arrow placed right-to-left kept its direction through redraw via recipe.flip. |
+| delete outside the lasso, GH-30 spike | unbinds the note | `getElements` on the open note matched the lasso (same page px, same `numInPage`). `deletePageElements` on 36 elements, 21 of them outside the lasso, returned success, then the next call failed with 105 "No note-related app is bound" and the note closed to the file menu. Lassoing the whole shape first (view closed, `lassoElements`), then deleting only what that lasso holds, works, and so does `insertPageElements` with the plugin view closed. |
 
 Design consequence (decided 2026-11-05): tap or drag to place with a transparent full-screen layer, wrap a selection, and a lasso-toolbar "redraw" that regenerates a Stencil shape at the lasso box from a recipe stored in `Element.userData`. Centred insert is dropped.
 

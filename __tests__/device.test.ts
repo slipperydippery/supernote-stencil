@@ -5,6 +5,8 @@ type Fake = {
   log: string[];
   created: any[];
   lassoElements: any[];
+  pageElements: any[];
+  pageReadFails: boolean;
   lassoRect: { left: number; top: number; right: number; bottom: number };
   lassoPreviewRect: { left: number; top: number; right: number; bottom: number };
   lassoPreviewFails: boolean;
@@ -83,6 +85,13 @@ jest.mock('sn-plugin-lib', () => {
     },
     PluginNoteAPI: { saveCurrentNote: jest.fn(() => record('saveCurrentNote')) },
     PluginFileAPI: {
+      getElements: jest.fn(() => {
+        record('getElements');
+        if (mockState.pageReadFails) {
+          return Promise.resolve({ success: false, result: null, error: { code: 1, message: 'boom' } });
+        }
+        return mockOk(mockState.pageElements);
+      }),
       getPageSize: jest.fn(() => {
         record('getPageSize');
         return mockOk({ width: 1920, height: 2560 });
@@ -130,7 +139,7 @@ jest.mock('sn-plugin-lib', () => {
 });
 
 import { PluginCommAPI } from 'sn-plugin-lib';
-import { currentPage, DEFAULT_SETTINGS, insertPlan, loadSettings, readLasso, replaceElements, replaceLasso, saveSettings, selectRect } from '../src/device';
+import { currentPage, DEFAULT_SETTINGS, insertPlan, loadSettings, readLasso, replaceElements, replaceLasso, replaceWhole, saveSettings, selectRect } from '../src/device';
 import type { Settings } from '../src/device';
 
 const ctx = { notePath: '/note/a.note', page: 2, width: 1920, height: 2560, unit: 1 };
@@ -163,6 +172,8 @@ beforeEach(() => {
     log: [],
     created: [],
     lassoElements: [],
+    pageElements: [],
+    pageReadFails: false,
     lassoRect: { left: 100, top: 200, right: 300, bottom: 400 },
     lassoPreviewRect: { left: 100, top: 200, right: 300, bottom: 400 },
     lassoPreviewFails: false,
@@ -310,6 +321,41 @@ describe('readLasso', () => {
     expect(res.own).toBeNull();
   });
 
+  const dash = (n: number, x: number) => ({ uuid: `p${n}`, userData: tag, numInPage: n, stroke: { points: pts([{ x, y: 50 }, { x: x + 10, y: 60 }]) } });
+
+  it('grows a partial selection to every element of the shape on the page', async () => {
+    mockState.lassoElements = [dash(4, 30), dash(5, 50)];
+    mockState.pageElements = [{ uuid: 'ink', userData: '', numInPage: 1 }, dash(3, 10), dash(4, 30), dash(5, 50), dash(6, 70)];
+    const res = await readLasso();
+    expect(res.own).toEqual({ nums: [3, 4, 5, 6], box: { left: 10, top: 50, right: 80, bottom: 60 }, tag });
+    expect(res.recipes).toBe(2);
+    expect(mockState.log).toEqual(expect.arrayContaining(['getElements', 'recycle:p3', 'recycle:p6', 'recycle:ink']));
+  });
+
+  it('grows a partial selection that also caught other ink, and still replaces only the shape', async () => {
+    mockState.lassoElements = [{ uuid: 'ink', userData: '', numInPage: 1 }, dash(4, 30)];
+    mockState.pageElements = [{ uuid: 'ink', userData: '', numInPage: 1 }, dash(3, 10), dash(4, 30)];
+    expect((await readLasso()).own).toEqual({ nums: [3, 4], box: { left: 10, top: 50, right: 40, bottom: 60 }, tag });
+  });
+
+  it('ignores a page read that does not hold the lassoed elements under their numbers', async () => {
+    mockState.lassoElements = [dash(4, 30), dash(5, 50)];
+    mockState.pageElements = [dash(3, 10), dash(4, 30), dash(9, 50)];
+    expect((await readLasso()).own).toBeNull();
+  });
+
+  it('keeps the selection-only result when the page read fails', async () => {
+    mockState.lassoElements = [{ uuid: 'ink', userData: '', numInPage: 1 }, dash(4, 30)];
+    mockState.pageReadFails = true;
+    expect((await readLasso()).own).toEqual({ nums: [4], box: { left: 30, top: 50, right: 40, bottom: 60 } });
+  });
+
+  it('does not read the page for a selection without a shape or with two', async () => {
+    mockState.lassoElements = [{ uuid: 'ink', userData: '', numInPage: 1 }];
+    await readLasso();
+    expect(mockState.log).not.toContain('getElements');
+  });
+
   it('leaves own empty when an element number is missing', async () => {
     mockState.lassoElements = [
       { uuid: 'ink', userData: '' },
@@ -338,6 +384,32 @@ describe('replaceElements', () => {
     await replaceElements(ctx, [5, 7], plan, recipe);
     const order = mockState.log.filter(l => /^(delete|createElement|insertPageElements)/.test(l));
     expect(order).toEqual([`deletePageElements:5,7@${ctx.page}`, 'createElement:0', 'createElement:0', 'createElement:700', 'insertPageElements']);
+  });
+});
+
+describe('replaceWhole', () => {
+  const box = { left: 100, top: 200, right: 300, bottom: 400 };
+  const shape = (n: number) => ({ uuid: `s${n}`, userData: tag, numInPage: n });
+
+  it('lassoes the whole shape with the view closed, then deletes the lasso when it holds only the shape', async () => {
+    mockState.lassoElements = [shape(3), shape(4), shape(5)];
+    await replaceWhole(ctx, tag, 3, box, plan, recipe);
+    const order = mockState.log.filter(l => /^(closePluginView|lassoElements|getLassoElements|delete|insertPageElements)/.test(l));
+    expect(order).toEqual(['closePluginView', 'lassoElements', 'getLassoElements', 'deleteLassoElements', 'insertPageElements']);
+    expect(PluginCommAPI.lassoElements).toHaveBeenCalledWith({ left: 84, top: 184, right: 316, bottom: 416 });
+  });
+
+  it('deletes only the shape, by the new lasso numbers, when the lasso also caught other ink', async () => {
+    mockState.lassoElements = [{ uuid: 'ink', userData: '', numInPage: 1 }, shape(7), shape(8)];
+    await replaceWhole(ctx, tag, 2, box, plan, recipe);
+    expect(mockState.log).toContain(`deletePageElements:7,8@${ctx.page}`);
+    expect(mockState.log).not.toContain('deleteLassoElements');
+  });
+
+  it('changes nothing when the lasso does not hold exactly the shape', async () => {
+    mockState.lassoElements = [shape(3), shape(4)];
+    await expect(replaceWhole(ctx, tag, 3, box, plan, recipe)).rejects.toThrow("2 of the shape's 3 elements");
+    expect(mockState.log.filter(l => /^(delete|createElement|insertPageElements)/.test(l))).toEqual([]);
   });
 });
 
