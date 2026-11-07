@@ -23,6 +23,17 @@ export const TONE_COLOR: Record<Tone, 0 | 157 | 201> = { light: 201, dark: 157, 
  */
 export const TONE_GAP: Record<Tone, number> = { light: 68, dark: 25, black: 13 };
 
+/** Hatch line width as a share of the shape's weight width. */
+export const HATCH_SHARE = 0.45;
+
+/** The hatch gaps a setting can step through, sparsest first: 2–30 % coverage. */
+export const GAP_STEPS = [135, 90, 68, 45, 34, 25, 18, 13, 9] as const;
+
+/** Ink coverage in percent of a hatch gap, at the normal-weight hatch line. */
+export function coverage(gap: number): number {
+  return Math.round((widthPx(HATCH_SHARE * WEIGHT_WIDTH.normal) / gap) * 100);
+}
+
 /** Approximate page px for an internal width on a Manta (0.5 mm ≈ 600 ≈ 6 px). */
 export function widthPx(width: number): number {
   return width / 100;
@@ -46,10 +57,14 @@ export function isStyle(value: unknown): value is Style {
   return Object.keys(o).length === STYLE_KEYS.length && STYLE_KEYS.every(k => (STYLE_VALUES[k] as readonly unknown[]).includes(o[k]));
 }
 
-/** Fill values written before tone existed, and what they mean now. */
+/**
+ * Fill values written before tone existed, and what they mean now. 1.0.0
+ * hatched at 0.059·h perpendicular, 14–18 px on the default boxes, so black
+ * (13 px) is the tone that redraws an old hatched shape closest to how it was.
+ */
 const LEGACY_FILL: Record<string, Pick<Style, 'fill' | 'tone'>> = {
   none: { fill: 'none', tone: DEFAULT_STYLE.tone },
-  hatch: { fill: 'hatch', tone: 'dark' },
+  hatch: { fill: 'hatch', tone: 'black' },
   light: { fill: 'solid', tone: 'light' },
   dark: { fill: 'solid', tone: 'dark' },
 };

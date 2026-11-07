@@ -354,6 +354,17 @@ describe('settings', () => {
     expect((await loadSettings()).style).toEqual({ weight: 'thick', line: 'dashed', fill: 'solid', tone: 'light', look: 'hand' });
   });
 
+  it('falls back to the default style on a four-word value whose fill only exists with tone', async () => {
+    await saveSettings(DEFAULT_SETTINGS);
+    for (const d of [...mockState.dirs]) {
+      if (d.startsWith('/plugin/settings/style/')) {
+        mockState.dirs.delete(d);
+      }
+    }
+    mockState.dirs.add('/plugin/settings/style/thick-dashed-cross-hand');
+    expect((await loadSettings()).style).toEqual(DEFAULT_SETTINGS.style);
+  });
+
   it('saves the other keys when the device refuses one', async () => {
     const { FileUtils } = require('sn-plugin-lib');
     const real = FileUtils.makeDir.getMockImplementation();

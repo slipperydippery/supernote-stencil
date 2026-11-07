@@ -7,7 +7,7 @@ import type { Box, Pt, ShapeDef, ShapeId } from '../shapes/types';
 import { dashSamples } from './dashes';
 import { fillStrokes, headStrokes } from './fills';
 import { handDrawnOutline, LOCKED, peakThickness, pressureFromWidth, resample, splitStrokes, toXY } from './hand';
-import { firmwareWidth, WEIGHT_WIDTH, type Style } from './style';
+import { firmwareWidth, TONE_GAP, WEIGHT_WIDTH, type Style } from './style';
 
 export type StrokeSpec = { points: Pt[]; pressures: number[]; penType: 10 | 16; penColor: 0 | 157 | 201 | 254; thickness: number };
 export type GeoSpec = {
@@ -111,14 +111,15 @@ function boundsOf(box: Box, strokes: StrokeSpec[], geometries: GeoSpec[]): Box {
   return b;
 }
 
-export function renderShape(def: ShapeDef, box: Box, style: Style, seed: number): Plan {
+/** `gap` is the hatch spacing in page px; it defaults to the tone's built-in value. */
+export function renderShape(def: ShapeDef, box: Box, style: Style, seed: number, gap = TONE_GAP[style.tone]): Plan {
   const outlines = def.outline(box);
   const width = WEIGHT_WIDTH[style.weight];
   const strokes: StrokeSpec[] = [];
   const geometries: GeoSpec[] = [];
 
   if (def.closed && style.fill !== 'none') {
-    strokes.push(...fillStrokes(outlines[0], style, width, partSeed(seed, FILL_PART)));
+    strokes.push(...fillStrokes(outlines[0], style, width, partSeed(seed, FILL_PART), gap));
   }
   if (!def.closed) {
     for (const h of outlines.slice(1)) {
