@@ -9,11 +9,11 @@ import { readStyle, TONE_GAP, type Style, type Tone } from './style';
 export type Recipe = { v: 1; shape: ShapeId; style: Style; seed: number; flip?: { x?: boolean; y?: boolean }; gap?: number };
 
 export function serializeRecipe(r: Recipe): string {
-  const { weight, line, fill, tone, look } = r.style;
+  const { weight, line, fill, tone, ink, look } = r.style;
   const out: Recipe = {
     v: r.v,
     shape: r.shape,
-    style: { weight, line, fill, tone, look },
+    style: { weight, line, fill, tone, ink, look },
     seed: r.seed,
   };
   if (r.flip?.x || r.flip?.y) {
@@ -56,7 +56,7 @@ export function parseRecipe(s: string | null | undefined): Recipe | null {
   if (!o || typeof o !== 'object' || o.v !== 1) {
     return null;
   }
-  // Recipes written before GH-20 carry a four-key style; readStyle upgrades them.
+  // Recipes written before GH-50 (and GH-20) carry five- or four-key styles; readStyle upgrades them.
   const style = readStyle(o.style);
   // Recipes written before GH-45 may name arrowDown; readShapeId maps it to arrow.
   const shape = readShapeId(o.shape);

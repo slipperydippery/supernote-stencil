@@ -1,21 +1,25 @@
 export type Weight = 'thin' | 'normal' | 'thick';
-export type Line = 'solid' | 'dashed' | 'dotted';
+export type Line = 'solid' | 'dashed' | 'dotted' | 'none';
 export type Fill = 'none' | 'solid' | 'hatch' | 'cross';
 export type Tone = 'light' | 'dark' | 'black';
+export type Ink = 'light' | 'dark' | 'black';
 export type Look = 'clean' | 'hand';
-export type Style = { weight: Weight; line: Line; fill: Fill; tone: Tone; look: Look };
-export const DEFAULT_STYLE: Style = { weight: 'normal', line: 'solid', fill: 'none', tone: 'dark', look: 'clean' };
+export type Style = { weight: Weight; line: Line; fill: Fill; tone: Tone; ink: Ink; look: Look };
+export const DEFAULT_STYLE: Style = { weight: 'normal', line: 'solid', fill: 'none', tone: 'dark', ink: 'black', look: 'clean' };
 /** Internal width unit (same as Geometry.penWidth): thin 400, normal 600, thick 1000. */
 export const WEIGHT_WIDTH: Record<Weight, number> = { thin: 400, normal: 600, thick: 1000 };
 
 export const WEIGHTS: Weight[] = ['thin', 'normal', 'thick'];
-export const LINES: Line[] = ['solid', 'dashed', 'dotted'];
+export const LINES: Line[] = ['solid', 'dashed', 'dotted', 'none'];
 export const FILLS: Fill[] = ['none', 'solid', 'hatch', 'cross'];
 export const TONES: Tone[] = ['light', 'dark', 'black'];
+export const INKS: Ink[] = ['light', 'dark', 'black'];
 export const LOOKS: Look[] = ['clean', 'hand'];
 
 /** Pen colour of a solid fill: the device has two greys and black. */
 export const TONE_COLOR: Record<Tone, 0 | 157 | 201> = { light: 201, dark: 157, black: 0 };
+/** Pen colour of outlines, arrow heads and head fills. */
+export const INK_COLOR: Record<Ink, 0 | 157 | 201> = { light: 201, dark: 157, black: 0 };
 /** Hatch line width as a share of the shape's weight width. */
 export const HATCH_SHARE = 0.45;
 
@@ -48,10 +52,10 @@ export function firmwareWidth(width: number): number {
 }
 
 /** Every value of each style key, in style-bar order. */
-export const STYLE_VALUES: { [K in keyof Style]: readonly Style[K][] } = { weight: WEIGHTS, line: LINES, fill: FILLS, tone: TONES, look: LOOKS };
+export const STYLE_VALUES: { [K in keyof Style]: readonly Style[K][] } = { weight: WEIGHTS, line: LINES, fill: FILLS, tone: TONES, ink: INKS, look: LOOKS };
 export const STYLE_KEYS = Object.keys(STYLE_VALUES) as (keyof Style)[];
 
-/** Exactly the five style keys, each with a known value. */
+/** Exactly the six style keys, each with a known value. */
 export function isStyle(value: unknown): value is Style {
   if (!value || typeof value !== 'object') {
     return false;
@@ -72,22 +76,27 @@ const LEGACY_FILL: Record<string, Pick<Style, 'fill' | 'tone'>> = {
   dark: { fill: 'solid', tone: 'dark' },
 };
 
+const has = (o: object, k: string) => Object.prototype.hasOwnProperty.call(o, k);
+
 /**
- * A style from a stored record, or null when it is not one. Records written
- * before GH-20 have four keys and a fill of none/hatch/light/dark; they are
- * upgraded here so saved settings and recipes in existing shapes keep working.
+ * A style from a stored record, or null when it is not one. Older records are
+ * upgraded so saved settings and recipes in existing shapes keep working:
+ * five keys without ink (before GH-50) read as ink black, and four keys
+ * (before GH-20) also have a fill of none/hatch/light/dark.
  */
 export function readStyle(value: unknown): Style | null {
   if (!value || typeof value !== 'object') {
     return null;
   }
-  const o = value as Record<string, unknown>;
-  if (isStyle(o)) {
-    return { weight: o.weight, line: o.line, fill: o.fill, tone: o.tone, look: o.look };
+  let o = value as Record<string, unknown>;
+  const n = Object.keys(o).length;
+  if (n === 4 && !has(o, 'tone') && !has(o, 'ink') && typeof o.fill === 'string' && has(LEGACY_FILL, o.fill)) {
+    o = { ...o, ...LEGACY_FILL[o.fill], ink: 'black' };
+  } else if (n === STYLE_KEYS.length - 1 && !has(o, 'ink')) {
+    o = { ...o, ink: 'black' };
   }
-  if (Object.keys(o).length === 4 && typeof o.fill === 'string' && Object.prototype.hasOwnProperty.call(LEGACY_FILL, o.fill)) {
-    const up = { ...o, ...LEGACY_FILL[o.fill] };
-    return isStyle(up) ? up : null;
+  if (!isStyle(o)) {
+    return null;
   }
-  return null;
+  return { weight: o.weight, line: o.line, fill: o.fill, tone: o.tone, ink: o.ink, look: o.look };
 }
