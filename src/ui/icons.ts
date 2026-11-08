@@ -38,6 +38,7 @@ export const GLYPHS: Record<GlyphKey, ImageSourcePropType> = {
   'line-solid': require('../../assets/glyphs/line-solid.png'),
   'line-dashed': require('../../assets/glyphs/line-dashed.png'),
   'line-dotted': require('../../assets/glyphs/line-dotted.png'),
+  'line-none': require('../../assets/glyphs/line-none.png'),
   'fill-none': require('../../assets/glyphs/fill-none.png'),
   'fill-solid': require('../../assets/glyphs/fill-solid.png'),
   'fill-hatch': require('../../assets/glyphs/fill-hatch.png'),
@@ -45,6 +46,9 @@ export const GLYPHS: Record<GlyphKey, ImageSourcePropType> = {
   'tone-light': require('../../assets/glyphs/tone-light.png'),
   'tone-dark': require('../../assets/glyphs/tone-dark.png'),
   'tone-black': require('../../assets/glyphs/tone-black.png'),
+  'ink-light': require('../../assets/glyphs/ink-light.png'),
+  'ink-dark': require('../../assets/glyphs/ink-dark.png'),
+  'ink-black': require('../../assets/glyphs/ink-black.png'),
   'look-clean': require('../../assets/glyphs/look-clean.png'),
   'look-hand': require('../../assets/glyphs/look-hand.png'),
 };

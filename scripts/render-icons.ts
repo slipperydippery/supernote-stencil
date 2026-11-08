@@ -66,9 +66,9 @@ function shapeIcon(id: ShapeId): Buffer {
 
 type Draw = (ctx: SKRSContext2D) => void;
 
-function line(d: string, width: number, dash?: number[]): Draw {
+function line(d: string, width: number, dash?: number[], color = INK): Draw {
   return ctx => {
-    ctx.strokeStyle = INK;
+    ctx.strokeStyle = color;
     ctx.lineWidth = width;
     ctx.lineCap = 'round';
     ctx.setLineDash(dash ?? []);
@@ -112,6 +112,8 @@ const GLYPHS: Record<string, Draw> = {
   'line-solid': line('M3 7h16', 1.8),
   'line-dashed': line('M3 7h16', 1.8, [4, 3]),
   'line-dotted': line('M3 7h16', 1.8, [0.1, 3.2]),
+  // A ghost of a line: a faint dotted hairline.
+  'line-none': line('M3 7h16', 1, [0.1, 2.6], '#c9c9c9'),
   'fill-none': square(null),
   'fill-solid': square('#9d9d9d'),
   'fill-hatch': square(null, HATCH),
@@ -120,6 +122,10 @@ const GLYPHS: Record<string, Draw> = {
   'tone-light': square('#d4d4d4'),
   'tone-dark': square('#8c8c8c'),
   'tone-black': square(INK),
+  // Ink: the same greys as tone, as a line rather than a square.
+  'ink-light': line('M3 7h16', 2.2, undefined, '#d4d4d4'),
+  'ink-dark': line('M3 7h16', 2.2, undefined, '#8c8c8c'),
+  'ink-black': line('M3 7h16', 2.2),
   'look-clean': line('M3 9 L19 5', 1.8),
   'look-hand': line('M3 9 C7 3, 10 11, 14 6 S18 4, 19 6', 1.8),
 };
