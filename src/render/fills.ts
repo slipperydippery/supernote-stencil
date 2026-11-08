@@ -1,6 +1,6 @@
 /**
  * Fills as pen-10 strokes clipped to the outline polygon: solid fills (and
- * black arrow heads) as dense horizontal lines in the tone's grey, hatch and
+ * arrow heads, in the ink) as dense horizontal lines in the tone's grey, hatch and
  * cross as 45° lines whose spacing is set by the tone alone.
  */
 import type { Box, Pt } from '../shapes/types';
@@ -95,9 +95,9 @@ function solid(outline: Pt[], b: Box, color: StrokeSpec['penColor'], width: numb
 /** Pen width for head fills: fine enough that the round caps leave a straight edge where no outline covers it. */
 const HEAD_FILL_WIDTH = 200;
 
-/** Solid black fill for a closed arrow head, whatever the shape's weight or fill. */
-export function headStrokes(outline: Pt[]): StrokeSpec[] {
-  return solid(outline, boundsOf(outline), 0, HEAD_FILL_WIDTH);
+/** Solid fill in the ink's colour for a closed arrow head, whatever the shape's weight or fill. */
+export function headStrokes(outline: Pt[], color: StrokeSpec['penColor']): StrokeSpec[] {
+  return solid(outline, boundsOf(outline), color, HEAD_FILL_WIDTH);
 }
 
 /**

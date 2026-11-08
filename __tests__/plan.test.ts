@@ -1,7 +1,7 @@
 import { dashLengths } from '../src/render/dashes';
 import { peakThickness, splitStrokes, toXY } from '../src/render/hand';
-import { renderShape, type Plan } from '../src/render/plan';
-import { DEFAULT_STYLE, FILLS, LINES, LOOKS, TONE_GAP, TONES, WEIGHTS, firmwareWidth, type Style } from '../src/render/style';
+import { effectiveLine, renderShape, type Plan } from '../src/render/plan';
+import { DEFAULT_STYLE, FILLS, LINES, LOOKS, readStyle, TONE_GAP, TONES, WEIGHTS, firmwareWidth, type Style } from '../src/render/style';
 import { SHAPES, type ShapeDef } from '../src/shapes';
 import { ALL_IDS, defaultBox, inside } from '../test/helpers';
 
@@ -337,5 +337,84 @@ describe('renderShape', () => {
     const st = style({ look: 'hand', fill: 'hatch', line: 'dashed' });
     expect(renderShape(def, box, st, 11)).toEqual(renderShape(def, box, st, 11));
     expect(renderShape(def, box, st, 12)).not.toEqual(renderShape(def, box, st, 11));
+  });
+
+  describe('ink', () => {
+    const pens = (plan: Plan) => [...plan.strokes.map(s => s.penColor), ...plan.geometries.map(g => g.penColor)];
+    const cases = LOOKS.flatMap(look => (['solid', 'dashed', 'dotted'] as const).flatMap(line => (['rectangle', 'arrow', 'doubleArrow'] as const).map(id => [look, line, id] as const)));
+
+    it.each(cases)('%s %s %s: every outline, head and head fill takes the ink', (look, line, id) => {
+      const def = SHAPES[id];
+      const plan = renderShape(def, defaultBox(def), style({ look, line, ink: 'dark' }), 3);
+      expect(pens(plan).length).toBeGreaterThan(0);
+      expect(new Set(pens(plan))).toEqual(new Set([157]));
+    });
+
+    it.each(LOOKS)('a solid fill keeps its tone, the outline takes the ink (%s)', look => {
+      const def = SHAPES.rectangle;
+      const st = style({ look, fill: 'solid', tone: 'light', ink: 'dark' });
+      const plan = renderShape(def, defaultBox(def), st, 3);
+      const fill = renderShape(def, defaultBox(def), { ...st, line: 'none' }, 3).strokes;
+      expect(fill.length).toBeGreaterThan(0);
+      expect(plan.strokes.slice(0, fill.length)).toEqual(fill);
+      expect(new Set(fill.map(s => s.penColor))).toEqual(new Set([201]));
+      expect(new Set(pens({ ...plan, strokes: plan.strokes.slice(fill.length) }))).toEqual(new Set([157]));
+    });
+
+    it.each(LOOKS)('hatch lines stay black under a grey ink (%s)', look => {
+      const def = SHAPES.rectangle;
+      const plan = renderShape(def, defaultBox(def), style({ look, fill: 'hatch', ink: 'dark' }), 3);
+      const hatch = plan.strokes.filter(s => s.penType === 10);
+      expect(hatch.length).toBeGreaterThan(0);
+      expect(hatch.every(s => s.penColor === 0)).toBe(true);
+      expect(new Set([...plan.strokes.filter(s => s.penType === 16), ...plan.geometries].map(e => e.penColor))).toEqual(new Set([157]));
+    });
+
+    it.each(ALL_IDS)('%s placed before ink redraws unchanged: the upgraded style draws as ink black', id => {
+      const def = SHAPES[id];
+      const box = defaultBox(def);
+      for (const st of STYLES.filter(s => s.line !== 'none')) {
+        const { ink: _, ...old } = st;
+        const upgraded = readStyle(old)!;
+        expect(upgraded).toEqual({ ...st, ink: 'black' });
+        expect(renderShape(def, box, upgraded, 5)).toEqual(renderShape(def, box, { ...old, ink: 'black' }, 5));
+      }
+    });
+  });
+
+  describe('line none', () => {
+    it.each(LOOKS.flatMap(look => (['solid', 'hatch', 'cross'] as const).map(fill => [look, fill] as const)))('draws a %s rectangle with fill %s as its fill alone', (look, fill) => {
+      const def = SHAPES.rectangle;
+      const box = defaultBox(def);
+      const plan = renderShape(def, box, style({ look, fill, line: 'none' }), 3);
+      const outlined = renderShape(def, box, style({ look, fill }), 3);
+      expect(plan.geometries).toEqual([]);
+      expect(plan.strokes.length).toBeGreaterThan(0);
+      expect(plan.strokes.every(s => s.penType === 10)).toBe(true);
+      expect(outlined.strokes.slice(0, plan.strokes.length)).toEqual(plan.strokes);
+      expect(plan.bounds).toEqual(box);
+    });
+
+    it('draws a filled circle without its ellipse', () => {
+      const plan = renderShape(SHAPES.circle, defaultBox(SHAPES.circle), style({ fill: 'solid', line: 'none' }), 3);
+      expect(plan.geometries).toEqual([]);
+      expect(plan.strokes.length).toBeGreaterThan(0);
+    });
+
+    it.each([
+      ['an arrow', SHAPES.arrow, style({ fill: 'solid', line: 'none' })],
+      ['a line', SHAPES.line, style({ line: 'none' })],
+      ['a rectangle with fill none', SHAPES.rectangle, style({ line: 'none' })],
+    ])('falls back to solid for %s, so the plan is never empty', (_, def, st) => {
+      expect(effectiveLine(def, st)).toBe('solid');
+      for (const look of LOOKS) {
+        const box = defaultBox(def);
+        expect(renderShape(def, box, { ...st, look }, 3)).toEqual(renderShape(def, box, { ...st, look, line: 'solid' }, 3));
+      }
+    });
+
+    it('keeps line none on a filled closed shape', () => {
+      expect(effectiveLine(SHAPES.rectangle, style({ fill: 'hatch', line: 'none' }))).toBe('none');
+    });
   });
 });

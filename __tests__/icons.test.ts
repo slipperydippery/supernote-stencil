@@ -1,6 +1,6 @@
-import { existsSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
 import { join } from 'path';
-import { FILLS, LINES, LOOKS, TONES, WEIGHTS } from '../src/render/style';
+import { FILLS, INKS, LINES, LOOKS, TONES, WEIGHTS } from '../src/render/style';
 import { ALL_IDS } from '../test/helpers';
 
 const ASSETS = join(__dirname, '..', 'assets');
@@ -15,6 +15,7 @@ describe('icons', () => {
     ...LINES.map(v => `line-${v}`),
     ...FILLS.map(v => `fill-${v}`),
     ...TONES.map(v => `tone-${v}`),
+    ...INKS.map(v => `ink-${v}`),
     ...LOOKS.map(v => `look-${v}`),
   ];
   it('has the strip marks', () => {
@@ -23,10 +24,17 @@ describe('icons', () => {
     }
   });
 
-  it('has the fifteen style glyphs', () => {
-    expect(glyphs).toHaveLength(15);
+  it('has the nineteen style glyphs', () => {
+    expect(glyphs).toHaveLength(19);
+    expect(glyphs).toEqual(expect.arrayContaining(['line-none', 'ink-light', 'ink-dark', 'ink-black']));
     for (const g of glyphs) {
       expect(existsSync(join(ASSETS, 'glyphs', `${g}.png`))).toBe(true);
     }
+  });
+
+  it.each(['line-none', 'ink-light', 'ink-dark', 'ink-black'])('renders %s at 44 x 28 like the others', g => {
+    // PNG IHDR: width and height are big-endian at bytes 16 and 20.
+    const png = readFileSync(join(ASSETS, 'glyphs', `${g}.png`));
+    expect([png.readUInt32BE(16), png.readUInt32BE(20)]).toEqual([44, 28]);
   });
 });

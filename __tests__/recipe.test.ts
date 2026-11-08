@@ -1,5 +1,5 @@
 import { gapField, parseRecipe, redrawGap, serializeRecipe, type Recipe } from '../src/render/recipe';
-import { DEFAULT_STYLE, TONE_GAP } from '../src/render/style';
+import { DEFAULT_STYLE, isStyle, readStyle, TONE_GAP } from '../src/render/style';
 
 describe('recipe', () => {
   const r: Recipe = { v: 1, shape: 'decision', style: { ...DEFAULT_STYLE, look: 'hand', fill: 'hatch' }, seed: 42 };
@@ -9,10 +9,22 @@ describe('recipe', () => {
   });
 
   it('serialises keys in contract order', () => {
-    const style = { look: 'hand', tone: 'light', fill: 'none', line: 'solid', weight: 'thin' } as const;
-    expect(serializeRecipe({ seed: 3, style, shape: 'rectangle', v: 1 } as Recipe)).toBe(
-      '{"v":1,"shape":"rectangle","style":{"weight":"thin","line":"solid","fill":"none","tone":"light","look":"hand"},"seed":3}',
+    const style = { look: 'hand', ink: 'dark', tone: 'light', fill: 'none', line: 'solid', weight: 'thin' } as const;
+    const out = serializeRecipe({ seed: 3, style, shape: 'rectangle', v: 1 } as Recipe);
+    expect(out).toBe(
+      '{"v":1,"shape":"rectangle","style":{"weight":"thin","line":"solid","fill":"none","tone":"light","ink":"dark","look":"hand"},"seed":3}',
     );
+    expect(Object.keys(JSON.parse(out).style)).toEqual(['weight', 'line', 'fill', 'tone', 'ink', 'look']);
+  });
+
+  it('reads a 1.1.0 recipe without ink as ink black', () => {
+    const old = '{"v":1,"shape":"decision","style":{"weight":"thick","line":"dashed","fill":"hatch","tone":"light","look":"hand"},"seed":9}';
+    expect(parseRecipe(old)).toEqual({ v: 1, shape: 'decision', style: { weight: 'thick', line: 'dashed', fill: 'hatch', tone: 'light', ink: 'black', look: 'hand' }, seed: 9 });
+  });
+
+  it('round-trips line none and a grey ink', () => {
+    const grey: Recipe = { ...r, style: { ...r.style, fill: 'solid', line: 'none', ink: 'light' } };
+    expect(parseRecipe(serializeRecipe(grey))).toEqual(grey);
   });
 
   it.each([
@@ -22,7 +34,7 @@ describe('recipe', () => {
     ['dark', { fill: 'solid', tone: 'dark' }],
   ])('upgrades a recipe written before tone with fill %s', (fill, expected) => {
     const old = `{"v":1,"shape":"decision","style":{"weight":"thick","line":"dashed","fill":"${fill}","look":"hand"},"seed":9}`;
-    expect(parseRecipe(old)).toEqual({ v: 1, shape: 'decision', style: { weight: 'thick', line: 'dashed', look: 'hand', ...expected }, seed: 9 });
+    expect(parseRecipe(old)).toEqual({ v: 1, shape: 'decision', style: { weight: 'thick', line: 'dashed', look: 'hand', ink: 'black', ...expected }, seed: 9 });
   });
 
   it('rejects a four-key style whose fill is not a pre-tone value', () => {
@@ -59,6 +71,7 @@ describe('recipe', () => {
     ['unknown shape', '{"v":1,"shape":"star","style":{"weight":"thin","line":"solid","fill":"none","tone":"dark","look":"hand"},"seed":1}'],
     ['bad style', '{"v":1,"shape":"rectangle","style":{"weight":"huge","line":"solid","fill":"none","tone":"dark","look":"hand"},"seed":1}'],
     ['bad tone', '{"v":1,"shape":"rectangle","style":{"weight":"thin","line":"solid","fill":"none","tone":"grey","look":"hand"},"seed":1}'],
+    ['bad ink', '{"v":1,"shape":"rectangle","style":{"weight":"thin","line":"solid","fill":"none","tone":"dark","ink":"grey","look":"hand"},"seed":1}'],
     ['missing seed', '{"v":1,"shape":"rectangle","style":{"weight":"thin","line":"solid","fill":"none","tone":"dark","look":"hand"}}'],
     ['json null', 'null'],
   ])('rejects %s', (_, s) => {
@@ -109,5 +122,31 @@ describe('recipe', () => {
       const plain: Recipe = { ...r, style: { ...DEFAULT_STYLE, fill: 'none', tone: 'dark' } };
       expect(redrawGap(plain, { ...plain.style, fill: 'hatch' }, gaps)).toBe(34);
     });
+  });
+});
+
+describe('readStyle', () => {
+  const six = { weight: 'thin', line: 'none', fill: 'solid', tone: 'light', ink: 'dark', look: 'hand' };
+
+  it('isStyle accepts exactly the six keys', () => {
+    expect(isStyle(six)).toBe(true);
+    const { ink: _, ...five } = six;
+    expect(isStyle(five)).toBe(false);
+    expect(isStyle({ ...six, extra: 1 })).toBe(false);
+  });
+
+  it('reads a five-key 1.1.0 style as ink black, without touching the input', () => {
+    const five = { weight: 'thin', line: 'solid', fill: 'solid', tone: 'light', look: 'hand' };
+    const copy = { ...five };
+    expect(readStyle(five)).toEqual({ ...five, ink: 'black' });
+    expect(five).toEqual(copy);
+  });
+
+  it('gives a four-key pre-GH-20 style both upgrades', () => {
+    expect(readStyle({ weight: 'thin', line: 'solid', fill: 'light', look: 'clean' })).toEqual({ weight: 'thin', line: 'solid', fill: 'solid', tone: 'light', ink: 'black', look: 'clean' });
+  });
+
+  it('rejects a six-key style with an unknown ink', () => {
+    expect(readStyle({ ...six, ink: 'grey' })).toBeNull();
   });
 });

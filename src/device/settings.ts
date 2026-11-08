@@ -33,8 +33,12 @@ function decode(out: Settings, key: Key, raw: string): void {
   switch (key) {
     case 'style': {
       const parts = raw.split('-');
-      // Five words today; four from a version without tone, which readStyle upgrades.
-      const keys = parts.length === STYLE_KEYS.length ? STYLE_KEYS : parts.length === 4 ? STYLE_KEYS.filter(k => k !== 'tone') : null;
+      // Six words today; five from a version without ink, four from one without tone too. readStyle upgrades both.
+      const keys =
+        parts.length === STYLE_KEYS.length ? STYLE_KEYS
+        : parts.length === 5 ? STYLE_KEYS.filter(k => k !== 'ink')
+        : parts.length === 4 ? STYLE_KEYS.filter(k => k !== 'tone' && k !== 'ink')
+        : null;
       const style = keys ? readStyle(Object.fromEntries(keys.map((k, i) => [k, parts[i]]))) : null;
       out.style = style ?? { ...DEFAULT_STYLE };
       return;
