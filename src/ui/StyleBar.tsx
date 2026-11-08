@@ -5,7 +5,7 @@ import { GLYPHS, type GlyphKey } from './icons';
 import { choose, groupDisabled, valueDisabled } from './styleRules';
 import { CHIP, INK, PAPER, RULE, type ChipSize } from './theme';
 
-/** `open`: the shape being styled has no fill, so line none is not offered. */
+/** `open`: the shape being styled is open (an arrow or a line), so it has no fill and line none is not offered. */
 type Props = { style: Style; onStyle(s: Style): void; size: ChipSize; open: boolean };
 
 type Group = keyof Style;

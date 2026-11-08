@@ -11,6 +11,7 @@ import { join } from 'path';
 import { renderShape, type Plan } from '../src/render/plan';
 import { DEFAULT_STYLE, STYLE_VALUES, type Style } from '../src/render/style';
 import { SHAPES, shapesIn, type ShapeId } from '../src/shapes';
+import { groupDisabled } from '../src/ui/styleRules';
 
 type B = [number, number, number, number]; // left, top, right, bottom
 
@@ -135,7 +136,7 @@ function chips(groups: (keyof Style)[], style: Style, x: number, y: number, cw: 
   let cx = x;
   groups.forEach((g, gi) => {
     cx += gi ? groupGap : 0;
-    const off = g === 'tone' && style.fill === 'none';
+    const off = groupDisabled(g, style);
     for (const v of STYLE_VALUES[g]) {
       const on = style[g] === v;
       s += `<g opacity="${off ? 0.3 : 1}">${box(cx, y, cw + 4 * R, ch + 4 * R, 3 * R, on ? '#000' : '#777', on ? 2 * R : R)}`;

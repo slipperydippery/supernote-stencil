@@ -65,7 +65,7 @@ const styles = StyleSheet.create({
     top: STRIP_TOP,
     left: STRIP_MARGIN_X,
     right: STRIP_MARGIN_X,
-    // Min, not fixed: fifteen chips may wrap to a second row on a dense screen, and the strip must grow with them rather than clip.
+    // Min, not fixed: nineteen chips may wrap to a second row on a dense screen, and the strip must grow with them rather than clip.
     minHeight: STRIP_HEIGHT,
     paddingVertical: 6,
     flexDirection: 'row',
