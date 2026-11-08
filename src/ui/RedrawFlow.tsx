@@ -39,6 +39,8 @@ export default function RedrawFlow({ selection }: { selection: Selection }) {
   const [style, setStyle] = useState<Style>(selection.recipe.style);
   const [coverage, setCoverage] = useState<Record<Tone, number>>(DEFAULT_SETTINGS.coverage);
   const [mode, setMode] = useState<Mode>('loading');
+  // No placement layer here: an open row closes only from its own chips.
+  const [openGroup, setOpenGroup] = useState<keyof Style | null>(null);
   const [error, setError] = useState('');
   const busy = useRef(false);
 
@@ -130,7 +132,17 @@ export default function RedrawFlow({ selection }: { selection: Selection }) {
   return (
     <View style={styles.root}>
       {mode === 'strip' && (
-        <Strip shape={def} style={style} onStyle={setStyle} onExpand={noop} onClose={close} onRemove={remove} action={{ label: '✓', onPress: apply }} />
+        <Strip
+          shape={def}
+          style={style}
+          onStyle={setStyle}
+          onExpand={noop}
+          onClose={close}
+          onRemove={remove}
+          action={{ label: '✓', onPress: apply }}
+          openGroup={openGroup}
+          onOpenGroup={setOpenGroup}
+        />
       )}
     </View>
   );

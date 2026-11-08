@@ -1,5 +1,5 @@
 import React from 'react';
-import { PixelRatio, View } from 'react-native';
+import { Image, PixelRatio, View } from 'react-native';
 import { act, create, type ReactTestRenderer } from 'react-test-renderer';
 import { device, deviceMock } from '../test/device-mock';
 import { pressableNode } from '../test/helpers';
@@ -14,6 +14,7 @@ import * as dev from '../src/device';
 import { renderShape } from '../src/render/plan';
 import { DEFAULT_STYLE, hatchGap, TONE_COVERAGE } from '../src/render/style';
 import { SHAPES } from '../src/shapes';
+import { GLYPHS } from '../src/ui/icons';
 import PlaceFlow from '../src/ui/PlaceFlow';
 import PlacementLayer from '../src/ui/PlacementLayer';
 
@@ -127,9 +128,60 @@ describe('a remembered line none on pick', () => {
 it('persists a style chip in the strip and shows it selected', async () => {
   device.settings = { ...device.settings, lastShape: 'rectangle' };
   const r = await open();
+  await press(r, 'chip-line');
   await press(r, 'chip-line-dashed');
   expect(mocked.saveSettings).toHaveBeenLastCalledWith({ ...device.settings, style: { ...DEFAULT_STYLE, line: 'dashed' }, lastShape: 'rectangle', tab: 'basic', armOnOpen: true });
-  expect(pressableNode(r, 'chip-line-dashed').props.accessibilityState).toEqual({ selected: true });
+  expect(has(r, 'value-row')).toBe(false);
+  expect(pressableNode(r, 'chip-line').findByType(Image).props.source).toBe(GLYPHS['line-dashed']);
+});
+
+describe('a value row open in the strip', () => {
+  beforeEach(() => {
+    device.settings = { ...device.settings, lastShape: 'rectangle' };
+  });
+  const dismiss = (r: ReactTestRenderer) => r.root.findByType(PlacementLayer).props.onDismiss;
+
+  it('gives the placement layer a dismiss only while open', async () => {
+    const r = await open();
+    expect(dismiss(r)).toBeUndefined();
+    await press(r, 'chip-ink');
+    expect(dismiss(r)).toEqual(expect.any(Function));
+  });
+
+  it('closes on a page tap and places nothing; the next tap places', async () => {
+    const r = await open();
+    await press(r, 'chip-ink');
+    await gesture(r, [300, 400], [300, 400]);
+    expect(has(r, 'value-row')).toBe(false);
+    expect(mocked.insertPlan).not.toHaveBeenCalled();
+    await gesture(r, [300, 400], [300, 400]);
+    expect(mocked.insertPlan).toHaveBeenCalledTimes(1);
+  });
+
+  it('closes on a page drag without a band or a placement', async () => {
+    const r = await open();
+    await press(r, 'chip-ink');
+    await act(async () => {
+      layer(r).props.onResponderGrant(ev(100, 100));
+      layer(r).props.onResponderMove(ev(300, 200));
+    });
+    expect(has(r, 'rubber-band')).toBe(false);
+    await act(async () => {
+      layer(r).props.onResponderRelease(ev(300, 200));
+    });
+    expect(has(r, 'value-row')).toBe(false);
+    expect(mocked.insertPlan).not.toHaveBeenCalled();
+  });
+
+  it('is shut again after expanding to the panel and picking', async () => {
+    const r = await open();
+    await press(r, 'chip-ink');
+    await press(r, 'strip-preview');
+    await press(r, 'cell-circle');
+    expect(has(r, 'strip-icon-circle')).toBe(true);
+    expect(has(r, 'value-row')).toBe(false);
+    expect(dismiss(r)).toBeUndefined();
+  });
 });
 
 it('expands the panel from the strip preview', async () => {

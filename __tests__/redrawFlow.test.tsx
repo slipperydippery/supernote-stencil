@@ -164,11 +164,24 @@ describe('delete', () => {
 
 it('passes a style change made before apply into the recipe and plan', async () => {
   const r = await open();
+  await press(r, 'chip-fill');
   await press(r, 'chip-fill-hatch');
+  expect(has(r, 'value-row')).toBe(false);
   await press(r, 'strip-action');
   expect((renderShape as jest.Mock).mock.calls[0][2].fill).toBe('hatch');
   const [, , recipe] = mocked.replaceLasso.mock.calls[0] as any[];
   expect(recipe.style.fill).toBe('hatch');
+});
+
+it('keeps the strip marks working with a row open; only its own chip closes it', async () => {
+  const r = await open();
+  await press(r, 'chip-ink');
+  expect(has(r, 'chip-ink-dark')).toBe(true);
+  await press(r, 'chip-ink');
+  expect(has(r, 'value-row')).toBe(false);
+  await press(r, 'chip-ink');
+  await press(r, 'strip-action');
+  expect(mocked.replaceLasso).toHaveBeenCalled();
 });
 
 it('closes the view from the strip without replacing anything', async () => {
@@ -187,6 +200,7 @@ it("keeps the shape's recorded gap when the tone is unchanged", async () => {
 
 it('takes the saved gap for a new tone', async () => {
   const r = await open(selection({ recipe: { ...RECIPE, style: { ...DEFAULT_STYLE, fill: 'hatch' }, gap: 18 } }));
+  await press(r, 'chip-tone');
   await press(r, 'chip-tone-black');
   await press(r, 'strip-action');
   expect((renderShape as jest.Mock).mock.calls[0][4]).toBe(hatchGap(30));
@@ -195,6 +209,7 @@ it('takes the saved gap for a new tone', async () => {
 
 it('drops the gap when the fill no longer hatches', async () => {
   const r = await open(selection({ recipe: { ...RECIPE, style: { ...DEFAULT_STYLE, fill: 'hatch' }, gap: 18 } }));
+  await press(r, 'chip-fill');
   await press(r, 'chip-fill-solid');
   await press(r, 'strip-action');
   expect((mocked.replaceLasso.mock.calls[0] as any[])[2]).not.toHaveProperty('gap');
