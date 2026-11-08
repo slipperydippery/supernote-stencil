@@ -10,7 +10,7 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 import { renderShape, type Plan } from '../src/render/plan';
 import { DEFAULT_STYLE, STYLE_VALUES, type Style } from '../src/render/style';
-import { SHAPES, shapesIn, type ShapeId } from '../src/shapes';
+import { FAMILIES, SHAPES, shapesIn, type Family, type ShapeId } from '../src/shapes';
 import { groupDisabled } from '../src/ui/styleRules';
 
 type B = [number, number, number, number]; // left, top, right, bottom
@@ -22,7 +22,7 @@ const HAND: Style = { ...DEFAULT_STYLE, look: 'hand' };
 const SANS = 'Noto Sans';
 
 const f1 = (n: number) => Math.round(n * 10) / 10;
-const dataUri = (buf: Buffer) => `data:image/png;base64,${buf.toString('base64')}`;
+export const dataUri = (buf: Buffer) => `data:image/png;base64,${buf.toString('base64')}`;
 const asset = (p: string) => dataUri(readFileSync(join(ROOT, p)));
 const grey = (c: number) => (c === 0 ? '#111' : `rgb(${c},${c},${c})`);
 
@@ -84,7 +84,7 @@ function planSvg(plan: Plan): string {
   return s;
 }
 
-function shape(id: ShapeId, [left, top, right, bottom]: B, seed: number, style: Partial<Style> = {}): string {
+export function shape(id: ShapeId, [left, top, right, bottom]: B, seed: number, style: Partial<Style> = {}): string {
   return planSvg(renderShape(SHAPES[id], { left, top, right, bottom }, { ...HAND, ...style }, seed));
 }
 
@@ -103,11 +103,11 @@ function blankPage(shot: string): string {
 }
 
 /** Cuts a word from the screenshot and sets its top-left at (x, y). */
-function writing(shot: string, word: keyof typeof INK, x: number, y: number): string {
+export function writing(shot: string, word: keyof typeof INK, x: number, y: number): string {
   const [l, t, r, b] = INK[word];
   return `<svg x="${x}" y="${y}" width="${r - l}" height="${b - t}" viewBox="${l} ${t} ${r - l} ${b - t}" style="mix-blend-mode:multiply"><image href="${shot}" x="0" y="0" width="1920" height="2560"/></svg>`;
 }
-function inkBox(word: keyof typeof INK, x: number, y: number): B {
+export function inkBox(word: keyof typeof INK, x: number, y: number): B {
   const [l, t, r, b] = INK[word];
   return [x, y, x + r - l, y + b - t];
 }
@@ -121,16 +121,21 @@ for (const g of Object.keys(STYLE_VALUES) as (keyof Style)[]) {
   }
 }
 const PIN_ON = asset('assets/glyphs/pin-on.png');
-const ICON = Object.fromEntries((Object.keys(SHAPES) as ShapeId[]).map(id => [id, asset(`assets/shapes/${id}.png`)]));
+export const ICON = Object.fromEntries((Object.keys(SHAPES) as ShapeId[]).map(id => [id, asset(`assets/shapes/${id}.png`)]));
 
-function label(x: number, y: number, text: string, size: number, opts: { weight?: number; fill?: string; anchor?: string } = {}): string {
+export function label(x: number, y: number, text: string, size: number, opts: { weight?: number; fill?: string; anchor?: string } = {}): string {
   return `<text x="${f1(x)}" y="${f1(y)}" text-anchor="${opts.anchor ?? 'middle'}" dominant-baseline="central" font-family="${SANS}" font-size="${size}" font-weight="${opts.weight ?? 400}" fill="${opts.fill ?? '#000'}">${text}</text>`;
 }
-function box(x: number, y: number, w: number, h: number, r: number, stroke: string, sw: number, fill = '#fff'): string {
+export function box(x: number, y: number, w: number, h: number, r: number, stroke: string, sw: number, fill = '#fff'): string {
   return `<rect x="${f1(x)}" y="${f1(y)}" width="${f1(w)}" height="${f1(h)}" rx="${r}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"/>`;
 }
 
-/** Style chips in a row (StyleBar): returns the markup and the row's width. */
+/** One Chip: the glyph plus 2 dp padding and 1 dp border a side; an `on` chip trades padding for a 2 dp ink border. */
+function chip(x: number, y: number, glyph: string, cw: number, ch: number, on: boolean, off: boolean): string {
+  return `<g opacity="${off ? 0.3 : 1}">${box(x, y, cw + 6 * R, ch + 6 * R, 3 * R, on ? '#000' : '#777', on ? 2 * R : R)}<image href="${glyph}" x="${x + 3 * R}" y="${y + 3 * R}" width="${cw}" height="${ch}"/></g>`;
+}
+
+/** Every value of each group in a row (StyleBar): returns the markup and the row's width. */
 function chips(groups: (keyof Style)[], style: Style, x: number, y: number, cw: number, ch: number, groupGap: number): { svg: string; w: number } {
   let s = '';
   let cx = x;
@@ -138,37 +143,54 @@ function chips(groups: (keyof Style)[], style: Style, x: number, y: number, cw: 
     cx += gi ? groupGap : 0;
     const off = groupDisabled(g, style);
     for (const v of STYLE_VALUES[g]) {
-      const on = style[g] === v;
-      s += `<g opacity="${off ? 0.3 : 1}">${box(cx, y, cw + 4 * R, ch + 4 * R, 3 * R, on ? '#000' : '#777', on ? 2 * R : R)}`;
-      s += `<image href="${GLYPH[`${g}-${v}`]}" x="${cx + 2 * R}" y="${y + 2 * R}" width="${cw}" height="${ch}"/></g>`;
-      cx += cw + 4 * R + 3 * R;
+      s += chip(cx, y, GLYPH[`${g}-${v}`], cw, ch, style[g] === v, off);
+      cx += cw + 6 * R + 3 * R;
     }
     cx -= 3 * R;
   });
   return { svg: s, w: cx - x };
 }
 
-function panel(style: Style, selected: ShapeId): string {
+const TAB_LABEL: Record<Family, string> = { basic: 'Basic', flow: 'Flow', arrow: 'Arrows' };
+/** Row 1 is the line, row 2 the fill (StyleBar.PANEL_ROWS). */
+const PANEL_ROWS: (keyof Style)[][] = [['line', 'weight', 'ink'], ['fill', 'tone', 'look']];
+/** Strip display order (StyleSummary.ORDER). */
+const SUMMARY: (keyof Style)[] = ['weight', 'line', 'ink', 'fill', 'tone', 'look'];
+
+/** A text button of the panel header: 16 dp text in 12 dp of padding; the width is an estimate of the text run. */
+function textButton(right: number, y: number, text: string): { svg: string; w: number } {
+  const w = (text.length * 8.4 + 24) * R;
+  const h = 36 * R;
+  return { svg: box(right - w, y, w, h, 4 * R, '#000', R) + label(right - w / 2, y + h / 2, text, 16 * R), w };
+}
+
+/** The panel (src/ui/Panel.tsx): header, tabs, the line and fill rows, the family's grid. */
+export function panel(style: Style, selected: ShapeId | null, tab: Family = 'flow', undo = true): string {
   const x = 70 * R;
   const y = 40 * R;
-  const w = 420 * R;
+  const w = 480 * R;
   const pad = 14 * R;
   const gap = 12 * R;
   let s = '';
   let cy = y + pad;
   const btn = 36 * R;
   s += label(x + pad, cy + btn / 2, 'Stencil', 22 * R, { weight: 600, anchor: 'start' });
-  const closeX = x + w - pad - btn;
-  const settingsW = 95 * R;
-  s += box(closeX - 8 * R - settingsW, cy, settingsW, btn, 4 * R, '#000', R) + label(closeX - 8 * R - settingsW / 2, cy + btn / 2, 'Settings', 16 * R);
-  s += box(closeX, cy, btn, btn, 4 * R, '#000', R) + label(closeX + btn / 2, cy + btn / 2, '×', 22 * R);
+  // Header buttons, right to left: close, Settings, Undo last.
+  let right = x + w - pad;
+  s += box(right - btn, cy, btn, btn, 4 * R, '#000', R) + label(right - btn / 2, cy + btn / 2, '×', 22 * R);
+  right -= btn + 8 * R;
+  for (const t of undo ? ['Settings', 'Undo last'] : ['Settings']) {
+    const b = textButton(right, cy, t);
+    s += b.svg;
+    right -= b.w + 8 * R;
+  }
   cy += btn + gap;
 
   const tabH = 40 * R;
-  const tw = (w - 2 * pad) / 3;
-  ['Basic', 'Flow', 'Arrows'].forEach((t, i) => {
-    const on = t === 'Flow';
-    s += label(x + pad + tw * i + tw / 2, cy + tabH / 2 - R, t, 16 * R, { weight: on ? 600 : 400, fill: on ? '#000' : '#777' });
+  const tw = (w - 2 * pad) / FAMILIES.length;
+  FAMILIES.forEach((f, i) => {
+    const on = f === tab;
+    s += label(x + pad + tw * i + tw / 2, cy + tabH / 2 - R, TAB_LABEL[f], 16 * R, { weight: on ? 600 : 400, fill: on ? '#000' : '#777' });
     if (on) {
       s += `<rect x="${x + pad + tw * i}" y="${cy + tabH - 3 * R}" width="${tw}" height="${3 * R}" fill="#000"/>`;
     }
@@ -176,18 +198,19 @@ function panel(style: Style, selected: ShapeId): string {
   s += `<rect x="${x + pad}" y="${cy + tabH}" width="${w - 2 * pad}" height="${R}" fill="#000"/>`;
   cy += tabH + R + gap;
 
-  const cw = 34 * R;
-  const ch = 27 * R;
-  for (const row of [['weight', 'line', 'look'], ['fill', 'tone']] as (keyof Style)[][]) {
-    const rowW = chips(row, style, 0, 0, cw, ch, 24 * R).w;
-    s += chips(row, style, x + (w - rowW) / 2, cy, cw, ch, 24 * R).svg;
-    cy += ch + 4 * R + 6 * R;
+  const cw = 32 * R;
+  const ch = 24 * R;
+  for (const row of PANEL_ROWS) {
+    const rowW = chips(row, style, 0, 0, cw, ch, 16 * R).w;
+    s += chips(row, style, x + (w - rowW) / 2, cy, cw, ch, 16 * R).svg;
+    cy += ch + 6 * R + 6 * R;
   }
   cy += gap - 6 * R;
 
-  const cellW = (420 - 2 * 14 - 2 - 8) / 2 * R;
+  const cellW = ((480 - 2 * 14 - 2 - 8) / 2) * R;
   const cellH = (8 + 72 + 4 + 20 + 8) * R;
-  shapesIn('flow').forEach((d, i) => {
+  const defs = shapesIn(tab);
+  defs.forEach((d, i) => {
     const cx = x + pad + (i % 2) * (cellW + 8 * R);
     const ry = cy + Math.floor(i / 2) * (cellH + 8 * R);
     const on = d.id === selected;
@@ -195,36 +218,67 @@ function panel(style: Style, selected: ShapeId): string {
     s += `<image href="${ICON[d.id]}" x="${cx + cellW / 2 - 36 * R}" y="${ry + 8 * R}" width="${72 * R}" height="${72 * R}"/>`;
     s += label(cx + cellW / 2, ry + (8 + 72 + 4 + 10) * R, d.label, 14 * R);
   });
-  const bottom = cy + 4 * cellH + 3 * 8 * R + pad;
+  const rows = Math.ceil(defs.length / 2);
+  const bottom = cy + rows * cellH + (rows - 1) * 8 * R + pad;
   return box(x, y, w, bottom - y, 8 * R, '#000', R) + s;
 }
 
-function strip(style: Style, id: ShapeId, action?: string): string {
+/** Outer size of a strip chip and the gap between summary chips (StyleSummary). */
+const SUMMARY_CHIP = { w: 38 * R, h: 30 * R, gap: 10 * R };
+
+/**
+ * The strip (src/ui/Strip.tsx): the shape tile, six summary chips, the marks.
+ * `action` draws the redraw strip (bin, check, close; no pin); `open` opens
+ * that group's value row under the chips, which makes the strip taller.
+ */
+export function strip(style: Style, id: ShapeId, opts: { action?: boolean; open?: keyof Style } = {}): string {
   const x = 24 * R;
   const y = 16 * R;
   const w = 1920 - 2 * x;
-  const h = 64 * R;
+  const tileH = 50 * R;
+  const barTop = y + 7 * R + (tileH - SUMMARY_CHIP.h) / 2;
+  const rowTop = barTop + SUMMARY_CHIP.h + 6 * R;
+  const rowH = SUMMARY_CHIP.h + 10 * R;
+  const h = opts.open ? rowTop + rowH - y + 7 * R : 64 * R;
   let s = box(x, y, w, h, 6 * R, '#000', R);
   const px = x + 8 * R;
   // The shape tile: preview alone on the redraw strip, preview plus a pinned pin tab (2 dp ink frame) on the place strip.
-  const pinned = !action;
+  const pinned = !opts.action;
   const tileW = (pinned ? 101 : 64) * R;
   const ty = y + 7 * R;
-  s += box(px, ty, tileW, 50 * R, 4 * R, pinned ? '#000' : '#777', pinned ? 2 * R : R) + `<image href="${ICON[id]}" x="${px + 10 * R}" y="${y + 10 * R}" width="${44 * R}" height="${44 * R}"/>`;
+  s += box(px, ty, tileW, tileH, 4 * R, pinned ? '#000' : '#777', pinned ? 2 * R : R) + `<image href="${ICON[id]}" x="${px + 10 * R}" y="${y + 10 * R}" width="${44 * R}" height="${44 * R}"/>`;
   if (pinned) {
     const tx = px + tileW - 36 * R;
-    s += `<clipPath id="tile"><rect x="${f1(px)}" y="${f1(ty)}" width="${f1(tileW)}" height="${50 * R}" rx="${4 * R}"/></clipPath>`;
-    s += `<rect x="${f1(tx)}" y="${f1(ty)}" width="${36 * R}" height="${50 * R}" fill="#000" clip-path="url(#tile)"/>`;
+    s += `<clipPath id="tile"><rect x="${f1(px)}" y="${f1(ty)}" width="${f1(tileW)}" height="${tileH}" rx="${4 * R}"/></clipPath>`;
+    s += `<rect x="${f1(tx)}" y="${f1(ty)}" width="${36 * R}" height="${tileH}" fill="#000" clip-path="url(#tile)"/>`;
     s += `<image href="${PIN_ON}" x="${f1(tx + 18 * R - 12 * R)}" y="${f1(ty + 25 * R - 12 * R)}" width="${24 * R}" height="${24 * R}"/>`;
   }
-  s += chips(['weight', 'line', 'fill', 'tone', 'look'], style, px + tileW + 10 * R, y + (h - 28 * R) / 2, 32 * R, 24 * R, 10 * R).svg;
+  // Six summary chips, each the glyph of its group's value with a corner mark; a dimmed group shows its value and does not open.
+  const barX = px + tileW + 10 * R;
+  SUMMARY.forEach((g, i) => {
+    const cx = barX + i * (SUMMARY_CHIP.w + SUMMARY_CHIP.gap);
+    const off = groupDisabled(g, style);
+    s += chip(cx, barTop, GLYPH[`${g}-${style[g]}`], 32 * R, 24 * R, false, off);
+    const mx = cx + SUMMARY_CHIP.w - 2 * R;
+    const my = barTop + SUMMARY_CHIP.h - 2 * R;
+    s += `<path d="M${f1(mx)} ${f1(my)} l${-4 * R} 0 l${4 * R} ${-4 * R} z" fill="#000" opacity="${off ? 0.3 : 1}"/>`;
+  });
+  if (opts.open) {
+    const values = STYLE_VALUES[opts.open];
+    const rowW = values.length * SUMMARY_CHIP.w + (values.length - 1) * 3 * R + 10 * R;
+    const rx = barX + SUMMARY.indexOf(opts.open) * (SUMMARY_CHIP.w + SUMMARY_CHIP.gap);
+    s += box(rx, rowTop, rowW, rowH, 4 * R, '#000', R);
+    values.forEach((v, i) => {
+      s += chip(rx + 5 * R + i * (SUMMARY_CHIP.w + 3 * R), rowTop + 5 * R, GLYPH[`${opts.open}-${v}`], 32 * R, 24 * R, style[opts.open!] === v, false);
+    });
+  }
   // The redraw strip: bin, check, close. The place strip: close only.
-  const marks = action ? ['bin', action, '×'] : ['×'];
+  const marks = opts.action ? ['bin', 'check', '×'] : ['×'];
   const mark = 40 * R;
   marks.forEach((m, i) => {
     const mx = x + w - 8 * R - mark - (marks.length - 1 - i) * (mark + 10 * R);
-    const my = y + (h - mark) / 2;
-    const dark = m !== '×' && m !== 'bin';
+    const my = ty + (tileH - mark) / 2;
+    const dark = m === 'check';
     s += box(mx, my, mark, mark, 4 * R, '#000', R, dark ? '#000' : '#fff');
     const c = { x: mx + mark / 2, y: my + mark / 2 };
     if (m === 'bin') {
@@ -239,7 +293,7 @@ function strip(style: Style, id: ShapeId, action?: string): string {
 }
 
 /** The selection frame left after an insert or a lasso. */
-function selected([l, t, r, b]: B, pad = 20): string {
+export function selected([l, t, r, b]: B, pad = 20): string {
   [l, t, r, b] = [l - pad, t - pad, r + pad, b + pad];
   let s = `<rect x="${l}" y="${t}" width="${r - l}" height="${b - t}" fill="none" stroke="#000" stroke-width="3" stroke-dasharray="14 10"/>`;
   for (const [hx, hy] of [[l, t], [r, t], [l, b], [r, b]]) {
@@ -250,7 +304,7 @@ function selected([l, t, r, b]: B, pad = 20): string {
 
 // --- scenes ---------------------------------------------------------------------
 
-const svg = (body: string) => `<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="2560" viewBox="0 0 1920 2560">${body}</svg>`;
+export const svg = (body: string) => `<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="2560" viewBox="0 0 1920 2560">${body}</svg>`;
 
 export function scenes(diagramShot: Buffer): Record<string, string> {
   const shot = dataUri(diagramShot);
@@ -284,7 +338,7 @@ export function scenes(diagramShot: Buffer): Record<string, string> {
     placeDone: svg(page + writing(shot, 'checkStock', word[0], word[1]) + shape('process', drag, 17)),
     wrapBefore: svg(page + writing(shot, 'backOrder', wl, wt) + loop),
     wrapAfter: svg(page + writing(shot, 'backOrder', wl, wt) + shape('rounded', wrapped, 23)),
-    redrawBefore: svg(page + degraded + writing(shot, 'shipOrder', label2[0], label2[1]) + selected(stretched) + strip(HAND, 'process', 'check')),
+    redrawBefore: svg(page + degraded + writing(shot, 'shipOrder', label2[0], label2[1]) + selected(stretched) + strip(HAND, 'process', { action: true })),
     redrawAfter: svg(page + shape('process', stretched, 31) + writing(shot, 'shipOrder', label2[0], label2[1])),
   };
 }
