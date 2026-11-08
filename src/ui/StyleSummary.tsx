@@ -49,7 +49,14 @@ export default function StyleSummary({ style, onStyle, open, openGroup, onOpenGr
       {ORDER.map(g => {
         const disabled = groupDisabled(g, style);
         return (
-          <View key={g} testID={`summary-${g}`} onLayout={e => setX(v => ({ ...v, [g]: e.nativeEvent.layout.x }))}>
+          <View
+            key={g}
+            testID={`summary-${g}`}
+            onLayout={e => {
+              // Read now, not in the updater: the host's React pools synthetic events, so `nativeEvent` is null once the handler returns (GH-56).
+              const left = e.nativeEvent.layout.x;
+              setX(v => ({ ...v, [g]: left }));
+            }}>
             {/* Never `on`: a framed summary chip would read as a chosen value. */}
             <Chip
               glyph={`${g}-${style[g]}` as GlyphKey}
