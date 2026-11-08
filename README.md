@@ -63,7 +63,7 @@ Six chip groups set the style of the next insert and are remembered across sessi
 - **Ink** — light, dark, black: the grey of the outline and arrow heads, pen 201, 157, 0.
 - **Look** — clean, hand: constant-width geometry, or a hand-drawn stroke with a pressure-mapped width profile.
 
-The panel shows every value, the line groups in one row and the fill groups in the next. In the strip each group is one chip showing its current value; tap it for the group's values in a row under the strip, tap a value to set it. While a row is open, a tap on the page only closes it.
+The panel shows every value, the line groups in one row and the fill groups in the next. In the strip each group is one chip showing its current value; tap it and the group's values open in a row under the chips, tap a value to set it. While a row is open, a tap on the page only closes it.
 
 ## Limitations and deferred work
 

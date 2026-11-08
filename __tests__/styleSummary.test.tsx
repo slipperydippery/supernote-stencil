@@ -104,21 +104,19 @@ describe('StyleSummary', () => {
   });
 
   describe('value row placement', () => {
-    const layout = (r: ReactTestRenderer, g: string, x: number) =>
-      act(() => r.root.findAll(n => n.props.testID === `summary-${g}` && typeof n.props.onLayout === 'function')[0].props.onLayout({ nativeEvent: { layout: { x, y: 0, width: 38, height: 30 } } }));
-    const at = (r: ReactTestRenderer) => StyleSheet.flatten(valueRow(r).props.style);
+    // The row follows a flexible spacer capped at its chip's left edge: 38 dp chips with a 10 dp gap.
+    const spacer = (r: ReactTestRenderer) => StyleSheet.flatten((valueRow(r).parent!.children[0] as ReactTestInstance).props.style);
 
-    it('lines up with the open chip and hangs under the strip', () => {
-      const r = summary({ openGroup: 'ink', edges: { right: 600, bottom: 47 } });
-      layout(r, 'ink', 96);
-      expect(at(r)).toMatchObject({ left: 96, top: 51, marginTop: 0 });
+    it('sits under its chip, in flow rather than hanging outside', () => {
+      const r = summary({ openGroup: 'ink' });
+      expect(spacer(r)).toMatchObject({ flex: 1, maxWidth: 2 * 48 });
+      expect(StyleSheet.flatten(valueRow(r).props.style).position).toBeUndefined();
     });
 
-    it("is clamped inside the strip's right edge rather than right-aligned", () => {
-      // Four fill values: 4 × 38 + 3 × 3 + 2 × 4 + 2 = 171 wide.
-      const r = summary({ openGroup: 'fill', edges: { right: 300, bottom: 47 } });
-      layout(r, 'fill', 200);
-      expect(at(r).left).toBe(300 - 8 - 171);
+    it('gives way at the right edge: the spacer is capped, not fixed', () => {
+      const r = summary({ openGroup: 'look' });
+      expect(spacer(r)).toMatchObject({ flex: 1, maxWidth: 5 * 48 });
+      expect(spacer(r).width).toBeUndefined();
     });
   });
 });
@@ -139,29 +137,18 @@ describe('Strip with the summary', () => {
     expect(props(box, 'chip-line-none').disabled).toBe(false);
   });
 
-  it("measures the strip's edges into the summary row's coordinates", () => {
+  it('keeps the value row inside the strip: nothing under the strip is absolutely positioned or measured', () => {
     const r = render(<Strip shape={SHAPES.rectangle} style={DEFAULT_STYLE} onStyle={noop} onExpand={noop} onClose={noop} openGroup="look" onOpenGroup={noop} />);
-    const lay = (n: ReactTestInstance, x: number, y: number, width: number, height: number) =>
-      act(() => n.props.onLayout({ nativeEvent: { layout: { x, y, width, height } } }));
-    const withLayout = r.root.findAll(n => typeof n.type === 'string' && typeof n.props.onLayout === 'function');
-    // Outermost first: the strip, the bar, then the six summary chips.
-    lay(withLayout[0], 24, 16, 700, 64);
-    lay(withLayout[1], 83, 17, 400, 30);
-    expect(StyleSheet.flatten(valueRow(r).props.style)).toMatchObject({ top: 64 - 17 + 4 });
-  });
-
-  it('lets the value row hang outside the strip', () => {
-    const r = render(<Strip shape={SHAPES.rectangle} style={DEFAULT_STYLE} onStyle={noop} onExpand={noop} onClose={noop} openGroup="look" onOpenGroup={noop} />);
-    let n = valueRow(r).parent;
-    const overflows: unknown[] = [];
-    while (n) {
+    const hosts: ReactTestInstance[] = [];
+    for (let n = valueRow(r).parent; n; n = n.parent) {
       if (typeof n.type === 'string') {
-        overflows.push(StyleSheet.flatten(n.props.style)?.overflow);
+        hosts.push(n);
       }
-      n = n.parent;
     }
-    // The summary row, the bar and the strip itself.
-    expect(overflows).toHaveLength(3);
-    expect(overflows.every(o => o === 'visible')).toBe(true);
+    // The outermost host is the strip, which is absolute within the flow's root by design.
+    for (const n of hosts.slice(0, -1)) {
+      expect(StyleSheet.flatten(n.props.style)?.position).not.toBe('absolute');
+    }
+    expect(r.root.findAll(n => typeof n.props.onLayout === 'function')).toHaveLength(0);
   });
 });
