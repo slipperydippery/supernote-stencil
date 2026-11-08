@@ -622,6 +622,17 @@ describe('settings', () => {
     expect((await loadSettings()).style).toEqual({ weight: 'thick', line: 'dashed', fill: 'solid', tone: 'light', look: 'hand' });
   });
 
+  it('reads a last shape saved as arrowDown before GH-45 as arrow', async () => {
+    await saveSettings(DEFAULT_SETTINGS);
+    for (const d of [...mockState.dirs]) {
+      if (d.startsWith('/plugin/settings/lastShape/')) {
+        mockState.dirs.delete(d);
+      }
+    }
+    mockState.dirs.add('/plugin/settings/lastShape/arrowDown');
+    expect((await loadSettings()).lastShape).toBe('arrow');
+  });
+
   it('falls back to the default style on a four-word value whose fill only exists with tone', async () => {
     await saveSettings(DEFAULT_SETTINGS);
     for (const d of [...mockState.dirs]) {

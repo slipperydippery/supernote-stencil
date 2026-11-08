@@ -25,7 +25,7 @@ The armed shape with its pin, the style glyphs and a close mark sit in a strip a
 
 ### Place
 
-Tap the page to place the shape at its default size under the pen, or drag to render it into the swept box. The plugin closes with the new shape lassoed. Shape, style and tab are remembered, so the next open goes straight to the strip. Tap the pin on the strip's shape tile to unpin it, and the next open shows the shape picker instead.
+Tap the page to place the shape at its default size under the pen, or drag to render it into the swept box. Line, arrow and double arrow run from pen-down to pen-up, so a drag points them any way; a drag within about a head's width of level or upright comes out level or upright, and a tap places them level, left to right. The plugin closes with the new shape lassoed. Shape, style and tab are remembered, so the next open goes straight to the strip. Tap the pin on the strip's shape tile to unpin it, and the next open shows the shape picker instead.
 
 ### Wrap
 
@@ -69,6 +69,7 @@ Five chip groups set the style of the next insert and are remembered across sess
 - Redraw takes one Stencil shape at a time; a selection holding two is refused.
 - Default sizes and panel width are tuned for a Manta; the code scales by page width but hasn't been tried on a Nomad.
 - Stencil inserts have no native undo (page-element writes clear the undo history). The SDK's only undo-keeping insert, `insertGeometry`, takes one clean geometry and no `userData`, so strokes can never keep undo and clean shapes would lose their recipe. Delete on the redraw strip and **Undo last** in the panel stand in for it.
+- Down arrows placed before GH-45 redraw as the merged arrow and keep their direction.
 - Arrows placed before 1.0.0 carry no `flip` in their recipe and redraw left-to-right regardless of how they were drawn.
 - Redraw deletes and re-inserts, so like every Stencil insert it cannot be undone natively.
 - **Undo last** keeps one record, for the most recent placement only.

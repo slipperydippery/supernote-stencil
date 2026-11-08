@@ -50,9 +50,22 @@ export function ellipse(f: Frame, n: number): Pt[][] {
   return [p];
 }
 
-/** Arrow head: two barbs at ±0.82π from the shaft direction, as an open three-point polyline through the tip. */
-export function head(tip: Pt, angle: number, f: Frame): Pt[] {
-  const len = Math.max(24, 0.09 * Math.max(Math.abs(f.w), Math.abs(f.h)));
+/** Barb length of an arrow head on a shape `span` px long. */
+export function headLength(span: number): number {
+  return Math.max(24, 0.09 * span);
+}
+
+/** Distance across a head's two barb ends. */
+export function headWidth(span: number): number {
+  return 2 * headLength(span) * Math.sin(Math.PI * 0.82);
+}
+
+/**
+ * Arrow head: two barbs at ±0.82π from the shaft direction, as an open three-point polyline through the tip.
+ * Sized from `span`, by default the longer side of the frame.
+ */
+export function head(tip: Pt, angle: number, f: Frame, span = Math.max(Math.abs(f.w), Math.abs(f.h))): Pt[] {
+  const len = headLength(span);
   const a1 = angle + Math.PI * 0.82;
   const a2 = angle - Math.PI * 0.82;
   return [
