@@ -113,6 +113,32 @@ describe('renderShape', () => {
     expect(filled.strokes).toEqual(plain.strokes);
   });
 
+  describe.each(['dashed', 'dotted'] as const)('%s arrows keep solid heads (GH-43)', line => {
+    const arrows = ALL_IDS.map(id => SHAPES[id]).filter(def => def.family === 'arrow');
+
+    it.each(arrows.map(def => [def.id, def] as const))('clean %s: the shaft dashes, the heads stay polygons', (_id, def) => {
+      const box = defaultBox(def);
+      const solid = renderShape(def, box, DEFAULT_STYLE, 1);
+      const plan = renderShape(def, box, style({ line }), 1);
+      expect(plan.geometries).toEqual(solid.geometries.slice(1));
+      expect(plan.geometries.length).toBe(def.outline(box).length - 1);
+      expect(plan.strokes.filter(s => s.penType === 10 && s.penColor === 0 && s.thickness === solid.geometries[0].penWidth).length).toBeGreaterThan(1);
+    });
+
+    it.each(arrows.map(def => [def.id, def] as const))('hand %s: the head pens are the ones a solid arrow gets', (_id, def) => {
+      const box = defaultBox(def);
+      const heads = def.outline(box).length - 1;
+      const pens = (plan: Plan) => plan.strokes.filter(s => s.penType === 16);
+      // slice(-0) would be the whole array, so a headless line takes the empty tail explicitly.
+      const tail = <T,>(a: T[]) => (heads ? a.slice(-2 * heads) : []);
+      const solidHeads = tail(pens(renderShape(def, box, style({ look: 'hand' }), 7)));
+      const dashed = pens(renderShape(def, box, style({ look: 'hand', line }), 7));
+      expect(solidHeads).toHaveLength(2 * heads);
+      expect(tail(dashed)).toEqual(solidHeads);
+      expect(dashed.length).toBeGreaterThan(solidHeads.length + 1);
+    });
+  });
+
   it('draws a long hand-drawn arrow shaft in one pass per corner-to-corner run', () => {
     const box = { left: 0, top: 900, right: 900, bottom: 0 };
     // Each head is two barb strokes, split at its tip.

@@ -57,19 +57,18 @@ function cleanGeometries(def: ShapeDef, box: Box, outlines: Pt[][], width: numbe
   return outlines.map((pl, i) => (i === 0 ? geo('straightLine', pl, width) : geo('GEO_polygon', [...pl, pl[0]], width)));
 }
 
-function cleanDashed(def: ShapeDef, outlines: Pt[][], style: Style, width: number): StrokeSpec[] {
+/** The first outline as dashes or dots; heads are not dashed (GH-43) and stay geometries, see cleanGeometries. */
+function cleanDashed(def: ShapeDef, outline: Pt[], style: Style, width: number): StrokeSpec[] {
   const out: StrokeSpec[] = [];
-  for (const outline of outlines) {
-    // Split at corners first so no dash bends around one.
-    const runs = splitStrokes(toXY(outline), def.closed);
-    runs.forEach((run, i) => {
-      const samples = resample(run, STEP).map(([x, y]) => ({ x, y }));
-      const openEnd = !def.closed && i === runs.length - 1;
-      for (const piece of dashSamples(samples, style.line, width, openEnd)) {
-        out.push({ points: piece, pressures: piece.map(() => PRESSURE), penType: 10, penColor: 0, thickness: firmwareWidth(width) });
-      }
-    });
-  }
+  // Split at corners first so no dash bends around one.
+  const runs = splitStrokes(toXY(outline), def.closed);
+  runs.forEach((run, i) => {
+    const samples = resample(run, STEP).map(([x, y]) => ({ x, y }));
+    const openEnd = !def.closed && i === runs.length - 1;
+    for (const piece of dashSamples(samples, style.line, width, openEnd)) {
+      out.push({ points: piece, pressures: piece.map(() => PRESSURE), penType: 10, penColor: 0, thickness: firmwareWidth(width) });
+    }
+  });
   return out;
 }
 
@@ -78,9 +77,11 @@ function handStrokes(def: ShapeDef, outlines: Pt[][], style: Style, width: numbe
   const out: StrokeSpec[] = [];
   outlines.forEach((outline, i) => {
     const pens = handDrawnOutline(toXY(outline), def.closed, partSeed(seed, i), width);
+    // A head reads the same on every arrow: only the shaft (part 0) takes the dash pattern (GH-43).
+    const line = i === 0 ? style.line : 'solid';
     pens.forEach((pen, j) => {
       const openEnd = !def.closed && j === pens.length - 1;
-      for (const s of dashSamples(pen, style.line, width, openEnd)) {
+      for (const s of dashSamples(pen, line, width, openEnd)) {
         out.push({
           points: s.map(p => ({ x: p.x, y: p.y })),
           pressures: s.map(p => pressureFromWidth(p.w, peak)),
@@ -130,7 +131,8 @@ export function renderShape(def: ShapeDef, box: Box, style: Style, seed: number,
     if (style.line === 'solid') {
       geometries.push(...cleanGeometries(def, box, outlines, width));
     } else {
-      strokes.push(...cleanDashed(def, outlines, style, width));
+      strokes.push(...cleanDashed(def, outlines[0], style, width));
+      geometries.push(...cleanGeometries(def, box, outlines, width).slice(1));
     }
   } else {
     strokes.push(...handStrokes(def, outlines, style, width, seed));
