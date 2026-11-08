@@ -17,6 +17,8 @@ type Props = {
   scale: number;
   /** Page px. A tap is a zero box at pen-down; a drag runs from pen-down (left, top) to pen-up (right, bottom), not normalised. */
   onPlace(box: Box, kind: PlaceKind): void;
+  /** Set while the strip has a value row open: the layer still takes the touch, so nothing lands under the menu, but only reports it. */
+  onDismiss?(): void;
 };
 
 type Dp = { x: number; y: number };
@@ -24,7 +26,7 @@ type Dp = { x: number; y: number };
 const at = (e: GestureResponderEvent): Dp => ({ x: e.nativeEvent.pageX, y: e.nativeEvent.pageY });
 const far = (a: Dp, b: Dp) => Math.hypot(b.x - a.x, b.y - a.y) >= DRAG_THRESHOLD_DP;
 
-export default function PlacementLayer({ enabled, shape, scale, onPlace }: Props) {
+export default function PlacementLayer({ enabled, shape, scale, onPlace, onDismiss }: Props) {
   const down = useRef<Dp | null>(null);
   const [band, setBand] = useState<Pt[][] | null>(null);
 
@@ -43,6 +45,10 @@ export default function PlacementLayer({ enabled, shape, scale, onPlace }: Props
     down.current = null;
     setBand(null);
     if (!d) {
+      return;
+    }
+    if (onDismiss) {
+      onDismiss();
       return;
     }
     const up = at(e);
@@ -68,7 +74,7 @@ export default function PlacementLayer({ enabled, shape, scale, onPlace }: Props
       onResponderMove={e => {
         const d = down.current;
         const p = at(e);
-        if (d) {
+        if (d && !onDismiss) {
           setBand(far(d, p) ? preview(d, p) : null);
         }
       }}

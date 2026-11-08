@@ -21,6 +21,7 @@ export default function PlaceFlow() {
   const [shape, setShape] = useState<ShapeDef | null>(null);
   const [undoable, setUndoable] = useState<LastPlacement | null>(null);
   const [mode, setMode] = useState<Mode>('loading');
+  const [openGroup, setOpenGroup] = useState<keyof Style | null>(null);
   const [error, setError] = useState('');
   const latest = useRef(settings);
   // Saves run one at a time (each rewrites the settings dirs) and must finish before the view closes.
@@ -67,6 +68,7 @@ export default function PlaceFlow() {
       return;
     }
     busy.current = true;
+    setOpenGroup(null);
     setMode('busy');
     try {
       const { style, coverage } = latest.current;
@@ -108,13 +110,24 @@ export default function PlaceFlow() {
     }
   };
 
+  const expand = () => {
+    setOpenGroup(null);
+    setMode('panel');
+  };
+
   const close = () => {
     saving.current.then(closeView, closeView).catch(fail);
   };
 
   return (
     <View style={styles.root}>
-      <PlacementLayer enabled={mode === 'strip'} shape={shape} scale={PixelRatio.get()} onPlace={place} />
+      <PlacementLayer
+        enabled={mode === 'strip'}
+        shape={shape}
+        scale={PixelRatio.get()}
+        onPlace={place}
+        onDismiss={openGroup ? () => setOpenGroup(null) : undefined}
+      />
       {mode === 'panel' && (
         <Panel
           tab={settings.tab}
@@ -142,9 +155,11 @@ export default function PlaceFlow() {
           shape={shape}
           style={settings.style}
           onStyle={setStyle}
-          onExpand={() => setMode('panel')}
+          onExpand={expand}
           onClose={close}
           armOnOpen={{ value: settings.armOnOpen, onToggle: toggleArmOnOpen }}
+          openGroup={openGroup}
+          onOpenGroup={setOpenGroup}
         />
       )}
       {mode === 'error' && <Message text={`Stencil: ${error}`} onClose={close} />}

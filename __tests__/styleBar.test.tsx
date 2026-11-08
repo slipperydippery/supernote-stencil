@@ -20,8 +20,8 @@ const chipIdsIn = (node: ReturnType<typeof rowNode>) =>
   node ? [...new Set(node.findAll(n => typeof n.props.testID === 'string' && n.props.testID.startsWith('chip-') && typeof n.type !== 'string').map(n => n.props.testID))] : [];
 
 describe('StyleBar', () => {
-  it('splits the panel size into a line row and a fill row', () => {
-    const r = render(<StyleBar style={DEFAULT_STYLE} onStyle={() => {}} size="panel" open={false} />);
+  it('splits the bar into a line row and a fill row', () => {
+    const r = render(<StyleBar style={DEFAULT_STYLE} onStyle={() => {}} open={false} />);
     expect(rowNode(r, 'stylebar-row-0')).toBeDefined();
     expect(rowNode(r, 'stylebar-row-1')).toBeDefined();
     expect(chipIdsIn(rowNode(r, 'stylebar-row-0'))).toEqual([
@@ -36,19 +36,13 @@ describe('StyleBar', () => {
     ]);
   });
 
-  it('keeps the strip size on one wrapping row of all nineteen', () => {
-    const r = render(<StyleBar style={DEFAULT_STYLE} onStyle={() => {}} size="strip" open={false} />);
-    expect(rowNode(r, 'stylebar-row-1')).toBeUndefined();
-    expect(chipIdsIn(rowNode(r, 'stylebar-row-0'))).toHaveLength(19);
-  });
-
   it('disables the tone chips while fill is none and enables them with a fill', () => {
     const onStyle = jest.fn();
     const chip = (r: ReactTestRenderer) => pressableNode(r, 'chip-tone-light').props;
-    const none = render(<StyleBar style={DEFAULT_STYLE} onStyle={onStyle} size="panel" open={false} />);
+    const none = render(<StyleBar style={DEFAULT_STYLE} onStyle={onStyle} open={false} />);
     expect(chip(none).disabled).toBe(true);
     expect(chip(none).accessibilityState).toEqual({ selected: false, disabled: true });
-    const hatched = render(<StyleBar style={{ ...DEFAULT_STYLE, fill: 'hatch' }} onStyle={onStyle} size="panel" open={false} />);
+    const hatched = render(<StyleBar style={{ ...DEFAULT_STYLE, fill: 'hatch' }} onStyle={onStyle} open={false} />);
     expect(chip(hatched).disabled).toBe(false);
     expect(chip(hatched).accessibilityState).toEqual({ selected: false });
     act(() => chip(hatched).onPress());
@@ -57,7 +51,7 @@ describe('StyleBar', () => {
 
   it('still reports a style change regardless of row', () => {
     const onStyle = jest.fn();
-    const r = render(<StyleBar style={DEFAULT_STYLE} onStyle={onStyle} size="panel" open={false} />);
+    const r = render(<StyleBar style={DEFAULT_STYLE} onStyle={onStyle} open={false} />);
     act(() => r.root.findAllByProps({ testID: 'chip-look-hand' })[0].props.onPress());
     expect(onStyle).toHaveBeenCalledWith({ ...DEFAULT_STYLE, look: 'hand' });
   });
@@ -66,7 +60,7 @@ describe('StyleBar', () => {
   const filled: Style = { ...DEFAULT_STYLE, fill: 'solid' };
 
   it('disables the weight and ink chips while line is none, each dimmed once (not compounded with its group)', () => {
-    const r = render(<StyleBar style={{ ...filled, line: 'none' }} onStyle={() => {}} size="strip" open={false} />);
+    const r = render(<StyleBar style={{ ...filled, line: 'none' }} onStyle={() => {}} open={false} />);
     for (const id of ['weight-thin', 'weight-thick', 'ink-light', 'ink-dark']) {
       expect(props(r, id).disabled).toBe(true);
       expect(StyleSheet.flatten(props(r, id).style).opacity).toBe(0.3);
@@ -75,7 +69,7 @@ describe('StyleBar', () => {
     for (const group of ['group-weight', 'group-ink']) {
       expect(StyleSheet.flatten(rowNode(r, group).props.style).opacity).toBeUndefined();
     }
-    const solid = render(<StyleBar style={filled} onStyle={() => {}} size="strip" open={false} />);
+    const solid = render(<StyleBar style={filled} onStyle={() => {}} open={false} />);
     expect(props(solid, 'weight-thin').disabled).toBe(false);
     expect(props(solid, 'ink-light').disabled).toBe(false);
     expect(StyleSheet.flatten(props(solid, 'weight-thin').style).opacity).toBeUndefined();
@@ -86,13 +80,13 @@ describe('StyleBar', () => {
     ['fill none', DEFAULT_STYLE, false, true],
     ['a filled closed shape', filled, false, false],
   ])('the line-none chip with %s is disabled: %s', (_, style, open, disabled) => {
-    const r = render(<StyleBar style={style} onStyle={() => {}} size="strip" open={open} />);
+    const r = render(<StyleBar style={style} onStyle={() => {}} open={open} />);
     expect(props(r, 'line-none').disabled).toBe(disabled);
   });
 
   it('brings the outline back when fill none is pressed while line is none', () => {
     const onStyle = jest.fn();
-    const r = render(<StyleBar style={{ ...filled, line: 'none' }} onStyle={onStyle} size="strip" open={false} />);
+    const r = render(<StyleBar style={{ ...filled, line: 'none' }} onStyle={onStyle} open={false} />);
     act(() => props(r, 'fill-none').onPress());
     expect(onStyle).toHaveBeenCalledWith({ ...filled, fill: 'none', line: 'solid' });
   });

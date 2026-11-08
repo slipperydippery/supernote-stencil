@@ -7,6 +7,7 @@ import Panel from '../src/ui/Panel';
 import Strip from '../src/ui/Strip';
 
 const noop = () => {};
+const rowShut = { openGroup: null, onOpenGroup: noop };
 
 function render(el: React.ReactElement): ReactTestRenderer {
   let r!: ReactTestRenderer;
@@ -57,7 +58,7 @@ describe('Panel header', () => {
 
 describe('Strip', () => {
   it('shows a delete mark only when given a handler, and reports it', () => {
-    const base = { shape: SHAPES.decision, style: DEFAULT_STYLE, onStyle: noop, onExpand: noop, onClose: noop };
+    const base = { shape: SHAPES.decision, style: DEFAULT_STYLE, onStyle: noop, onExpand: noop, onClose: noop, ...rowShut };
     expect(render(<Strip {...base} />).root.findAllByProps({ testID: 'strip-remove' })).toHaveLength(0);
     const onRemove = jest.fn();
     const r = render(<Strip {...base} onRemove={onRemove} action={{ label: '✓', onPress: noop }} />);
@@ -68,7 +69,7 @@ describe('Strip', () => {
   it('expands from the preview and renders an optional action', () => {
     const onExpand = jest.fn();
     const onPress = jest.fn();
-    const r = render(<Strip shape={SHAPES.decision} style={DEFAULT_STYLE} onStyle={noop} onExpand={onExpand} onClose={noop} action={{ label: '✓', onPress }} />);
+    const r = render(<Strip shape={SHAPES.decision} style={DEFAULT_STYLE} onStyle={noop} onExpand={onExpand} onClose={noop} {...rowShut} action={{ label: '✓', onPress }} />);
     act(() => r.root.findByProps({ testID: 'strip-preview' }).props.onPress());
     act(() => r.root.findByProps({ testID: 'strip-action' }).props.onPress());
     expect(onExpand).toHaveBeenCalled();
@@ -76,14 +77,14 @@ describe('Strip', () => {
   });
 
   it('omits the arm-on-open control when no prop is passed (RedrawFlow)', () => {
-    const r = render(<Strip shape={SHAPES.decision} style={DEFAULT_STYLE} onStyle={noop} onExpand={noop} onClose={noop} />);
+    const r = render(<Strip shape={SHAPES.decision} style={DEFAULT_STYLE} onStyle={noop} onExpand={noop} onClose={noop} {...rowShut} />);
     expect(r.root.findAllByProps({ testID: 'strip-arm-on-open' })).toHaveLength(0);
     expect(StyleSheet.flatten(r.root.findByProps({ testID: 'strip-tile' }).props.style).width).toBe(64);
   });
 
   it('frames the shape tile in ink when pinned, at a fixed width so the chips do not move', () => {
     const tile = (value: boolean) => {
-      const r = render(<Strip shape={SHAPES.decision} style={DEFAULT_STYLE} onStyle={noop} onExpand={noop} onClose={noop} armOnOpen={{ value, onToggle: noop }} />);
+      const r = render(<Strip shape={SHAPES.decision} style={DEFAULT_STYLE} onStyle={noop} onExpand={noop} onClose={noop} {...rowShut} armOnOpen={{ value, onToggle: noop }} />);
       return StyleSheet.flatten(r.root.findByProps({ testID: 'strip-tile' }).props.style);
     };
     expect(tile(false)).toMatchObject({ width: 101, borderWidth: 1 });
@@ -93,7 +94,7 @@ describe('Strip', () => {
   it('reports the arm-on-open toggle and reflects its checked state', () => {
     const onToggle = jest.fn();
     const r = render(
-      <Strip shape={SHAPES.decision} style={DEFAULT_STYLE} onStyle={noop} onExpand={noop} onClose={noop} armOnOpen={{ value: true, onToggle }} />,
+      <Strip shape={SHAPES.decision} style={DEFAULT_STYLE} onStyle={noop} onExpand={noop} onClose={noop} {...rowShut} armOnOpen={{ value: true, onToggle }} />,
     );
     const toggle = r.root.findByProps({ testID: 'strip-arm-on-open' });
     expect(toggle.props.accessibilityState).toEqual({ checked: true });
