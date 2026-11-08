@@ -4,9 +4,12 @@
  * `npm run listing` and commit the output.
  *
  * Raw screenshots go in docs/listing/raw/ under the names in IMAGES; shots of
- * the plugin's own UI are built from 01-diagram.png. Each one is cropped to the page (the device sidebar and footer are cut), optionally
- * to a region of it, and placed under a caption; pairs sit side by side or
- * stacked, whichever shows the crop larger.
+ * the plugin's own UI are built on 01-diagram.png (its sidebar and
+ * handwriting), which is not a listing image itself. Each shot is cropped to
+ * the page (the device sidebar and footer are cut), optionally to a region of
+ * it, and placed under a caption; pairs sit side by side or stacked, whichever
+ * shows the crop larger. A spec without a caption is a page of its own, such as
+ * a one-pager written on the device: it fills the image, unframed.
  */
 import { createCanvas, GlobalFonts, loadImage, type SKRSContext2D } from '@napi-rs/canvas';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
@@ -15,7 +18,7 @@ import { scenes } from './listing-scenes';
 
 type Rect = { x: number; y: number; w: number; h: number };
 type Shot = ({ file: string } | { scene: string }) & { label?: string };
-type Spec = { name: string; caption: string; shots: Shot[]; crop?: Rect };
+type Spec = { name: string; caption?: string; shots: Shot[]; crop?: Rect };
 
 const DIR = join(__dirname, '..', 'docs', 'listing');
 const RAW = join(DIR, 'raw');
@@ -41,10 +44,8 @@ const FONT = 'Noto Sans';
 // plugin view, so the shots that show Stencil's UI are scenes (listing-scenes.ts).
 const IMAGES: Spec[] = [
   {
-    name: '01-diagram',
-    caption: 'Diagram shapes, placed with the pen',
-    shots: [{ file: '01-diagram.png' }],
-    crop: { x: 124, y: 80, w: 1796, h: 2240 },
+    name: '01-this-is-stencil',
+    shots: [{ file: '01-this-is-stencil.png' }],
   },
   {
     name: '02-styles',
@@ -115,9 +116,16 @@ async function compose(spec: Spec, built: Record<string, string>): Promise<Buffe
   const ctx = canvas.getContext('2d');
   ctx.fillStyle = '#fff';
   ctx.fillRect(0, 0, OUT_W, OUT_H);
+  const crop = spec.crop ?? PAGE;
+  if (!spec.caption) {
+    const shot = spec.shots[0];
+    const img = await loadImage('file' in shot ? join(RAW, shot.file) : Buffer.from(built[shot.scene]));
+    const dst = fit(crop, { x: 0, y: 0, w: OUT_W, h: OUT_H });
+    ctx.drawImage(img, crop.x, crop.y, crop.w, crop.h, dst.x, dst.y, dst.w, dst.h);
+    return canvas.toBuffer('image/png');
+  }
   text(ctx, spec.caption, CAPTION_SIZE, INK, OUT_W / 2, MARGIN);
 
-  const crop = spec.crop ?? PAGE;
   const labelled = spec.shots.some(s => s.label);
   const top = MARGIN + CAPTION_SIZE * 1.4 + GAP;
   const n = spec.shots.length;

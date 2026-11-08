@@ -10,7 +10,8 @@
     "test": "jest",
     "typecheck": "tsc --noEmit",
     "icons": "npx tsx scripts/render-icons.ts",
-    "listing": "npx tsx scripts/render-listing.ts"
+    "listing": "npx tsx scripts/render-listing.ts",
+    "onepager": "npx tsx scripts/render-onepager.ts"
   },
   "dependencies": {
     "react": "19.0.0",
