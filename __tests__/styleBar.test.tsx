@@ -3,6 +3,7 @@ import { StyleSheet } from 'react-native';
 import { act, create, type ReactTestRenderer } from 'react-test-renderer';
 import { DEFAULT_STYLE, type Style } from '../src/render/style';
 import StyleBar, { Chip } from '../src/ui/StyleBar';
+import { pressableNode } from '../test/helpers';
 
 function render(el: React.ReactElement): ReactTestRenderer {
   let r!: ReactTestRenderer;
@@ -17,9 +18,6 @@ function render(el: React.ReactElement): ReactTestRenderer {
 const rowNode = (r: ReactTestRenderer, testID: string) => r.root.findAll(n => n.props.testID === testID && typeof n.type !== 'string')[0];
 const chipIdsIn = (node: ReturnType<typeof rowNode>) =>
   node ? [...new Set(node.findAll(n => typeof n.props.testID === 'string' && n.props.testID.startsWith('chip-') && typeof n.type !== 'string').map(n => n.props.testID))] : [];
-// Chip's own props don't carry accessibilityState (only the Pressable it renders does), so
-// pick that layer specifically rather than the outermost Chip match.
-const pressableNode = (r: ReactTestRenderer, testID: string) => r.root.findAll(n => n.props.testID === testID && 'accessibilityState' in n.props)[0];
 
 describe('StyleBar', () => {
   it('splits the panel size into a line row and a fill row', () => {
@@ -67,19 +65,20 @@ describe('StyleBar', () => {
   const props = (r: ReactTestRenderer, id: string) => pressableNode(r, `chip-${id}`).props;
   const filled: Style = { ...DEFAULT_STYLE, fill: 'solid' };
 
-  it('disables the weight and ink chips while line is none, and dims their groups', () => {
+  it('disables the weight and ink chips while line is none, each dimmed once (not compounded with its group)', () => {
     const r = render(<StyleBar style={{ ...filled, line: 'none' }} onStyle={() => {}} size="strip" open={false} />);
     for (const id of ['weight-thin', 'weight-thick', 'ink-light', 'ink-dark']) {
       expect(props(r, id).disabled).toBe(true);
+      expect(StyleSheet.flatten(props(r, id).style).opacity).toBe(0.3);
     }
     expect(props(r, 'line-solid').disabled).toBe(false);
     for (const group of ['group-weight', 'group-ink']) {
-      expect(StyleSheet.flatten(rowNode(r, group).props.style).opacity).toBe(0.3);
+      expect(StyleSheet.flatten(rowNode(r, group).props.style).opacity).toBeUndefined();
     }
     const solid = render(<StyleBar style={filled} onStyle={() => {}} size="strip" open={false} />);
     expect(props(solid, 'weight-thin').disabled).toBe(false);
     expect(props(solid, 'ink-light').disabled).toBe(false);
-    expect(StyleSheet.flatten(rowNode(solid, 'group-weight').props.style).opacity).toBeUndefined();
+    expect(StyleSheet.flatten(props(solid, 'weight-thin').style).opacity).toBeUndefined();
   });
 
   it.each([

@@ -2,6 +2,7 @@ import React from 'react';
 import { PixelRatio, View } from 'react-native';
 import { act, create, type ReactTestRenderer } from 'react-test-renderer';
 import { device, deviceMock } from '../test/device-mock';
+import { pressableNode } from '../test/helpers';
 
 jest.mock('../src/device', () => require('../test/device-mock').deviceMock());
 jest.mock('../src/render/plan', () => {
@@ -32,9 +33,6 @@ const press = async (r: ReactTestRenderer, testID: string) => {
     r.root.findAllByProps({ testID })[0].props.onPress();
   });
 };
-// Chip wraps a Pressable under the same testID (StyleBar's Chip component); the Pressable
-// layer is the one that carries accessibilityState, unlike Chip's own outer props.
-const pressableNode = (r: ReactTestRenderer, testID: string) => r.root.findAll(n => n.props.testID === testID && 'accessibilityState' in n.props)[0];
 const layer = (r: ReactTestRenderer) => r.root.findAllByProps({ testID: 'placement-layer' })[0];
 const onPlace = (r: ReactTestRenderer) => r.root.findByType(PlacementLayer).props.onPlace;
 const ev = (x: number, y: number) => ({ nativeEvent: { pageX: x, pageY: y } });

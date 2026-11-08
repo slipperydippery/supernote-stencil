@@ -1,6 +1,16 @@
+import type { ReactTestInstance, ReactTestRenderer } from 'react-test-renderer';
 import { SHAPES, type Box, type ShapeDef, type ShapeId } from '../src/shapes';
 
 export const ALL_IDS = Object.keys(SHAPES) as ShapeId[];
+
+/**
+ * StyleBar's `Chip` wraps a `Pressable` under the same testID (Chip → Pressable → forwardRef →
+ * host View → host string), so the outermost match is Chip's own props, which don't carry
+ * accessibilityState or style. Pick the Pressable layer specifically instead.
+ */
+export function pressableNode(r: ReactTestRenderer, testID: string): ReactTestInstance {
+  return r.root.findAll(n => n.props.testID === testID && 'accessibilityState' in n.props)[0];
+}
 
 /** The default insert box for a shape, placed at (100, 100). */
 export function defaultBox(def: ShapeDef): Box {

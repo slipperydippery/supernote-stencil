@@ -15,7 +15,7 @@ export const STRIP_TOP = 16;
 export const CELL_GAP = 8;
 
 export const CHIP = {
-  /** Same size as the strip: the two-row split spends the panel's width on a third row of groups, not on bigger chips. */
+  /** Same size as the strip: the two-row split spends the panel's extra width on a third group per row, not on bigger chips. */
   panel: { w: 32, h: 24 },
   strip: { w: 32, h: 24 },
 } as const;

@@ -34,8 +34,11 @@ export function Chip({ glyph, on, disabled, onPress, size, testID, accessibility
 export default function StyleBar({ style, onStyle, size, open }: Props) {
   const renderGroup = (group: Group) => {
     const groupOff = groupDisabled(group, style);
+    // Dimming for a fully-off group comes from each Chip's own `disabled` opacity (below), not
+    // from this View: stacking a second opacity here would compound (0.3 × 0.3), fading a
+    // disabled group's chips far below the single dim step the rest of the bar uses.
     return (
-      <View key={group} testID={`group-${group}`} style={[styles.group, groupOff && styles.off]}>
+      <View key={group} testID={`group-${group}`} style={styles.group}>
         {GROUPS[group].map(value => {
           const on = style[group] === value;
           const valueOff = valueDisabled(group, value, style, open);
