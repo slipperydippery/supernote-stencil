@@ -34,6 +34,7 @@ The measured findings live in `README.md` ("Results" table). The ones that shape
 - Close the plugin view before `lassoElements`, with no timer in between: JS timers do not fire while the view is closed.
 - Delete only elements inside the current lasso: `deletePageElements` on anything outside it unbinds the note (error 105, note closes).
 - Touch dp × `PixelRatio.get()` = page px.
+- Keep every touch target inside its ancestors' bounds. A value row hanging under the strip (`position: absolute`, `overflow: visible` up to the strip) opened and closed unreliably on the device (GH-58); the row sits inside the strip now.
 - The host's React pools synthetic events: read `e.nativeEvent` fields synchronously in the handler, never inside a state updater or after an `await` (GH-56: `nativeEvent` was null and the view closed without a message).
 
 ## Design record
