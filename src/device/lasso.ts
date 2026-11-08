@@ -36,8 +36,18 @@ export async function selectRect(rect: Box, only?: number): Promise<void> {
   const selected = (await call<unknown[] | null>('getLassoElements', PluginCommAPI.getLassoElements())) ?? [];
   selected.forEach(e => recycle(e as { uuid?: string }));
   if (selected.length > only) {
-    await call('setLassoBoxState', PluginCommAPI.setLassoBoxState(LASSO_REMOVE));
+    await dropLasso();
   }
+}
+
+/** Removes the lasso box, leaving nothing selected. */
+export async function dropLasso(): Promise<void> {
+  await call('setLassoBoxState', PluginCommAPI.setLassoBoxState(LASSO_REMOVE));
+}
+
+/** Reopens the plugin view after a call sequence that had to close it. */
+export async function showView(): Promise<void> {
+  await PluginManager.showPluginView();
 }
 
 export async function closeView(): Promise<void> {

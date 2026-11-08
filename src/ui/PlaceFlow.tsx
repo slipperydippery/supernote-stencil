@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { PixelRatio, StyleSheet, View } from 'react-native';
-import { closeView, currentPage, DEFAULT_SETTINGS, insertPlan, loadSettings, saveSettings, selectRect, type PageCtx, type Settings } from '../device';
+import { clearLastPlacement, closeView, currentPage, DEFAULT_SETTINGS, insertPlan, loadLastPlacement, loadSettings, recordPlacement, saveSettings, selectRect, undoPlacement, type LastPlacement, type PageCtx, type Settings } from '../device';
 import { renderShape } from '../render/plan';
 import { gapField, type Recipe } from '../render/recipe';
 import { hatchGap, type Style } from '../render/style';
@@ -18,6 +18,7 @@ export default function PlaceFlow() {
   const [ctx, setCtx] = useState<PageCtx | null>(null);
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
   const [shape, setShape] = useState<ShapeDef | null>(null);
+  const [undoable, setUndoable] = useState<LastPlacement | null>(null);
   const [mode, setMode] = useState<Mode>('loading');
   const [error, setError] = useState('');
   const latest = useRef(settings);
@@ -32,8 +33,10 @@ export default function PlaceFlow() {
 
   useEffect(() => {
     (async () => {
-      const [c, s] = await Promise.all([currentPage(), loadSettings()]);
+      const c = await currentPage();
+      const [s, last] = await Promise.all([loadSettings(), loadLastPlacement(c)]);
       setCtx(c);
+      setUndoable(last);
       latest.current = s;
       setSettings(s);
       const remembered = s.lastShape ? SHAPES[s.lastShape] : null;
@@ -74,8 +77,30 @@ export default function PlaceFlow() {
       const plan = renderShape(shape, target, style, seed, gap);
       await saving.current;
       const bounds = await insertPlan(ctx, plan, recipe);
+      const count = plan.strokes.length + plan.geometries.length;
+      // Recorded before the view closes, so the panel can take the shape back next time.
+      await recordPlacement(ctx, seed, count, bounds);
       // Closes the view and lassoes; JS stops once the view is closed, so nothing follows this.
-      await selectRect(bounds, plan.strokes.length + plan.geometries.length);
+      await selectRect(bounds, count);
+    } catch (e) {
+      busy.current = false;
+      fail(e);
+    }
+  };
+
+  /** Takes back the last placed shape on this page. undoPlacement closes the view; on a refusal it reopens it and throws. */
+  const undo = async () => {
+    if (!ctx || !undoable || busy.current) {
+      return;
+    }
+    busy.current = true;
+    setMode('busy');
+    try {
+      await saving.current;
+      // Cleared first: whether the shape is found as recorded or not, the record is spent.
+      await clearLastPlacement();
+      setUndoable(null);
+      await undoPlacement(ctx, undoable);
     } catch (e) {
       busy.current = false;
       fail(e);
@@ -99,6 +124,7 @@ export default function PlaceFlow() {
           onPick={pick}
           onClose={close}
           onSettings={() => setMode('settings')}
+          onUndo={undoable ? undo : undefined}
         />
       )}
       {mode === 'settings' && (

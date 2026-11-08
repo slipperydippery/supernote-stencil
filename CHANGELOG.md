@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Delete: a bin mark on the redraw strip removes the lassoed Stencil shape's own elements and nothing else, under the same selection rules as redraw. The shape panel gains **Undo last**, which takes back the shape most recently placed on this page; the record is spent by that tap, by deleting the shape from the lasso toolbar, or by redrawing it. Stands in for native undo, which no stroke insert can keep (GH-41).
+
 ## 1.1.0 — 2026-11-07
 
 - Fill tone: fill is none, solid, hatch or cross, and a new tone group (light, dark, black) sets the grey of a solid fill and the spacing of hatch lines. Spacing is a constant per tone instead of a share of the box height, so one style reads the same on every size. Saved styles and recipes from 1.0.0 are upgraded on read; an old hatch redraws at black, the spacing closest to what it had (GH-20).

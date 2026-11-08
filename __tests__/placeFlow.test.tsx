@@ -51,6 +51,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   jest.spyOn(PixelRatio, 'get').mockReturnValue(2);
   device.log = [];
+  device.lastPlacement = null;
   device.settings = { style: DEFAULT_STYLE, lastShape: null, tab: 'basic', armOnOpen: true, coverage: TONE_COVERAGE, wrapPadding: 24 };
 });
 
@@ -133,6 +134,54 @@ it('places on tap at default size centred under the pen, then lassoes as the las
   expect(mocked.selectRect).toHaveBeenCalledWith(b, plan.strokes.length + plan.geometries.length);
   expect(device.log[device.log.length - 1]).toBe('selectRect');
   expect(has(r, 'strip-preview')).toBe(false);
+});
+
+it('records the placement after the insert and before the view closes', async () => {
+  device.settings = { ...device.settings, lastShape: 'rectangle' };
+  const r = await open();
+  await gesture(r, [300, 400], [300, 400]);
+  const [, plan, recipe] = mocked.insertPlan.mock.calls[0] as any[];
+  expect(mocked.recordPlacement).toHaveBeenCalledWith(device.ctx, recipe.seed, plan.strokes.length + plan.geometries.length, plan.bounds);
+  expect(device.log).toEqual(['insertPlan', 'recordPlacement', 'selectRect']);
+});
+
+describe('undo last placement', () => {
+  const RECORD = { note: 'n', page: 1, seed: 42, count: 3, box: { left: 100, top: 100, right: 300, bottom: 200 } };
+
+  it('shows no undo button when nothing is recorded for this page', async () => {
+    const r = await open();
+    expect(has(r, 'panel-undo')).toBe(false);
+  });
+
+  it('clears the record, then removes the recorded shape, from the panel', async () => {
+    device.lastPlacement = RECORD;
+    const r = await open();
+    expect(mocked.loadLastPlacement).toHaveBeenCalledWith(device.ctx);
+    await press(r, 'panel-undo');
+    expect(mocked.undoPlacement).toHaveBeenCalledWith(device.ctx, RECORD);
+    expect(device.log).toEqual(['clearLastPlacement', 'undoPlacement']);
+    expect(has(r, 'panel-undo')).toBe(false);
+  });
+
+  it('waits for a pending settings save first', async () => {
+    device.lastPlacement = RECORD;
+    let release!: () => void;
+    mocked.saveSettings.mockImplementationOnce(() => new Promise<void>(res => (release = () => { device.log.push('saveSettings'); res(); })));
+    const r = await open();
+    await press(r, 'tab-flow');
+    await press(r, 'panel-undo');
+    expect(mocked.undoPlacement).not.toHaveBeenCalled();
+    await act(async () => release());
+    expect(device.log).toEqual(['saveSettings', 'clearLastPlacement', 'undoPlacement']);
+  });
+
+  it('shows the refusal when the shape is not found as recorded', async () => {
+    device.lastPlacement = RECORD;
+    mocked.undoPlacement.mockImplementationOnce(() => Promise.reject(new Error("the lasso caught 1 of the shape's 3 elements; nothing was changed")));
+    const r = await open();
+    await press(r, 'panel-undo');
+    expect(JSON.stringify(r.toJSON())).toContain('nothing was changed');
+  });
 });
 
 it('renders a drag into the swept box', async () => {
@@ -224,7 +273,7 @@ it('finishes pending settings saves before inserting', async () => {
   });
   expect(mocked.insertPlan).not.toHaveBeenCalled();
   await act(async () => release());
-  expect(device.log).toEqual(['saveSettings', 'insertPlan', 'selectRect']);
+  expect(device.log).toEqual(['saveSettings', 'insertPlan', 'recordPlacement', 'selectRect']);
 });
 
 describe('settings screen', () => {

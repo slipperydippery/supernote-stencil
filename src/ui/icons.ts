@@ -53,3 +53,5 @@ export const PIN = {
   off: require('../../assets/glyphs/pin.png'),
   on: require('../../assets/glyphs/pin-on.png'),
 } satisfies Record<string, ImageSourcePropType>;
+
+export const BIN: ImageSourcePropType = require('../../assets/glyphs/bin.png');

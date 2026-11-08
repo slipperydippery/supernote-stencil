@@ -112,6 +112,56 @@ it('regenerates with the same seed into the deflated lasso box, then selects the
   expect(device.log[device.log.length - 1]).toBe('selectRect');
 });
 
+it('forgets the last-placement record for the seed before redrawing', async () => {
+  const r = await open();
+  await press(r, 'strip-action');
+  expect(mocked.forgetPlacement).toHaveBeenCalledWith(RECIPE.seed);
+  expect(device.log.indexOf('forgetPlacement')).toBeLessThan(device.log.indexOf('replaceLasso'));
+});
+
+describe('delete', () => {
+  it('shows a delete mark beside apply', async () => {
+    const r = await open();
+    expect(has(r, 'strip-remove')).toBe(true);
+  });
+
+  it('hides it with apply when the selection is refused', async () => {
+    const r = await open(selection({ count: 4, recipes: 2, shapes: 2 }));
+    expect(has(r, 'strip-remove')).toBe(false);
+  });
+
+  it('deletes the selection and closes the view when it holds only the shape', async () => {
+    const r = await open();
+    await press(r, 'strip-remove');
+    expect(device.log).toEqual(['forgetPlacement', 'deleteLasso', 'closeView']);
+    expect(mocked.forgetPlacement).toHaveBeenCalledWith(RECIPE.seed);
+    expect(mocked.replaceLasso).not.toHaveBeenCalled();
+  });
+
+  it("deletes only the shape's own elements when other ink was selected too", async () => {
+    const r = await open(selection({ count: 5, recipes: 2, own: OWN }));
+    await press(r, 'strip-remove');
+    expect((mocked.deleteElements.mock.calls[0] as any[])[1]).toEqual([3, 4]);
+    expect(device.log).toEqual(['forgetPlacement', 'deleteElements', 'closeView']);
+  });
+
+  it('deletes the whole shape when only part of it was selected; deleteWhole closes the view itself', async () => {
+    const r = await open(selection({ count: 2, recipes: 2, own: { nums: [3, 4, 5, 6], box: OWN.box, tag: 'T' } }));
+    await press(r, 'strip-remove');
+    const [, tag, expected, box] = mocked.deleteWhole.mock.calls[0] as any[];
+    expect([tag, expected, box]).toEqual(['T', 4, OWN.box]);
+    expect(device.log).toEqual(['forgetPlacement', 'deleteWhole']);
+    expect(mocked.closeView).not.toHaveBeenCalled();
+  });
+
+  it('shows the error when the whole shape could not be found', async () => {
+    mocked.deleteWhole.mockImplementationOnce(() => Promise.reject(new Error("the lasso caught 1 of the shape's 4 elements; nothing was changed")));
+    const r = await open(selection({ count: 2, recipes: 2, own: { nums: [3, 4, 5, 6], box: OWN.box, tag: 'T' } }));
+    await press(r, 'strip-remove');
+    expect(JSON.stringify(r.toJSON())).toContain('nothing was changed');
+  });
+});
+
 it('passes a style change made before apply into the recipe and plan', async () => {
   const r = await open();
   await press(r, 'chip-fill-hatch');

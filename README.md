@@ -46,6 +46,12 @@ Lasso a placed Stencil shape, pull the native resize handle to the size you want
 
 Other ink caught in the lasso is left alone: only the shape's own elements are replaced, at their own size. Lassoing part of a shape (a few dashes of an arrow) restyles the whole shape: the plugin finds the rest through a page read, lassoes the whole shape, and redraws it. When the page read doesn't hold the lassoed elements under the same numbers (possibly a shape placed since the note was last saved), it redraws the selection alone. Both work only while the selection hasn't been moved or stretched; to resize, lasso the whole shape by itself. A selection holding two Stencil shapes is refused with a notice and nothing is touched.
 
+### Delete
+
+Stencil inserts cannot be undone natively, and a dashed or hatched shape is many strokes, so a shape that landed over other ink is hard to remove by hand: native delete takes the ink inside the lasso with it. The redraw strip has a bin mark beside the check mark: tap it and the shape's own elements are deleted and nothing else, with the same selection rules as redraw (other ink in the lasso stays, part of a shape deletes the whole shape, two shapes are refused).
+
+The shape panel has **Undo last** in its header while the last shape placed on this page can still be taken back. It finds the shape where it was placed and deletes its elements; if the shape was moved, stretched or already deleted, nothing is changed and a notice says so. The record is kept per note and page and is spent by that one tap, by deleting the shape from the lasso toolbar, or by redrawing it.
+
 ## Style bar glyphs
 
 Five chip groups set the style of the next insert and are remembered across sessions:
@@ -62,9 +68,10 @@ Five chip groups set the style of the next insert and are remembered across sess
 - Labels inside shapes are handwriting only; there's no typed text.
 - Redraw takes one Stencil shape at a time; a selection holding two is refused.
 - Default sizes and panel width are tuned for a Manta; the code scales by page width but hasn't been tried on a Nomad.
-- Stencil inserts have no native undo (page-element writes clear the undo history); a geometry-API variant without recipes would keep it.
+- Stencil inserts have no native undo (page-element writes clear the undo history). The SDK's only undo-keeping insert, `insertGeometry`, takes one clean geometry and no `userData`, so strokes can never keep undo and clean shapes would lose their recipe. Delete on the redraw strip and **Undo last** in the panel stand in for it.
 - Arrows placed before 1.0.0 carry no `flip` in their recipe and redraw left-to-right regardless of how they were drawn.
 - Redraw deletes and re-inserts, so like every Stencil insert it cannot be undone natively.
+- **Undo last** keeps one record, for the most recent placement only.
 
 ## Development
 
@@ -123,6 +130,8 @@ Device run of 2026-11-05 on a Manta, firmware current at that date. Observed on 
 | select only the insert, PR 3 spike | not possible | `showLassoAfterInsert: true` on a geometry inserted through `insertPageElements` selects nothing, before or after `closePluginView` (`getLassoElements` → 904, "No lasso action has been performed"). `lassoElements` only takes a rect, so a placed shape is selected together with anything inside its box. |
 | redraw after native stretch, PR 5 device run | pass | PR #12 merged after D1 and D6: deleteLassoElements removed the stretched ink while the transform was pending, and the live box from generateLassoPreview gave the new size; an arrow placed right-to-left kept its direction through redraw via recipe.flip. |
 | delete outside the lasso, GH-30 spike | unbinds the note | `getElements` on the open note matched the lasso (same page px, same `numInPage`). `deletePageElements` on 36 elements, 21 of them outside the lasso, returned success, then the next call failed with 105 "No note-related app is bound" and the note closed to the file menu. Lassoing the whole shape first (view closed, `lassoElements`), then deleting only what that lasso holds, works, and so does `insertPageElements` with the plugin view closed. |
+| undo last placement, GH-41 device run | pass | From the panel, with no lasso beforehand: `closePluginView`, `lassoElements` on the recorded box, `getLassoElements` filtered by recipe seed, `deletePageElements` removed the shape and left the other ink. |
+| reopen the view on refusal, GH-41 device run | pass | After a native move the count check failed; `setLassoBoxState(2)` then `PluginManager.showPluginView()` in the same call chain brought the plugin view back with the notice. |
 
 Design consequence (decided 2026-11-05): tap or drag to place with a transparent full-screen layer, wrap a selection, and a lasso-toolbar "redraw" that regenerates a Stencil shape at the lasso box from a recipe stored in `Element.userData`. Centred insert is dropped.
 

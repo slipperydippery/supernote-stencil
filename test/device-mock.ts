@@ -1,4 +1,4 @@
-import type { PageCtx, Settings } from '../src/device';
+import type { LastPlacement, PageCtx, Settings } from '../src/device';
 import type { Recipe } from '../src/render/recipe';
 import { DEFAULT_STYLE, TONE_COVERAGE } from '../src/render/style';
 
@@ -7,6 +7,7 @@ export const device = {
   ctx: { notePath: '/note/a.note', page: 1, width: 1920, height: 2560, unit: 1 } as PageCtx,
   settings: { style: DEFAULT_STYLE, lastShape: null, tab: 'basic', armOnOpen: true, coverage: TONE_COVERAGE, wrapPadding: 24 } as Settings,
   log: [] as string[],
+  lastPlacement: null as LastPlacement | null,
 };
 
 export function deviceMock() {
@@ -33,6 +34,35 @@ export function deviceMock() {
     replaceElements: jest.fn((_ctx: unknown, _nums: number[], plan: { bounds: unknown }) => {
       device.log.push('replaceElements');
       return Promise.resolve(plan.bounds);
+    }),
+    deleteLasso: jest.fn(() => {
+      device.log.push('deleteLasso');
+      return Promise.resolve();
+    }),
+    deleteElements: jest.fn(() => {
+      device.log.push('deleteElements');
+      return Promise.resolve();
+    }),
+    deleteWhole: jest.fn(() => {
+      device.log.push('deleteWhole');
+      return Promise.resolve();
+    }),
+    undoPlacement: jest.fn(() => {
+      device.log.push('undoPlacement');
+      return Promise.resolve();
+    }),
+    loadLastPlacement: jest.fn(() => Promise.resolve(device.lastPlacement)),
+    recordPlacement: jest.fn(() => {
+      device.log.push('recordPlacement');
+      return Promise.resolve();
+    }),
+    clearLastPlacement: jest.fn(() => {
+      device.log.push('clearLastPlacement');
+      return Promise.resolve();
+    }),
+    forgetPlacement: jest.fn(() => {
+      device.log.push('forgetPlacement');
+      return Promise.resolve();
     }),
     selectRect: jest.fn(() => {
       device.log.push('selectRect');

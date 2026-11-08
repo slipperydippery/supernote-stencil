@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { closeView, currentPage, DEFAULT_SETTINGS, loadSettings, replaceElements, replaceLasso, replaceWhole, selectRect, type LassoSelection, type PageCtx } from '../device';
+import { closeView, currentPage, DEFAULT_SETTINGS, deleteElements, deleteLasso, deleteWhole, forgetPlacement, loadSettings, replaceElements, replaceLasso, replaceWhole, selectRect, type LassoSelection, type PageCtx } from '../device';
 import { renderShape } from '../render/plan';
 import { gapField, redrawGap, type Recipe } from '../render/recipe';
 import { hatchGap, TONES, WEIGHT_WIDTH, type Style, type Tone } from '../render/style';
@@ -76,12 +76,37 @@ export default function RedrawFlow({ selection }: { selection: Selection }) {
       const { gap: _old, ...kept } = selection.recipe;
       const recipe: Recipe = { ...kept, style, ...gapField(style, gap) }; // seed is kept
       const plan = renderShape(def, applyFlip(box, recipe.flip), style, recipe.seed, gap);
+      // A redrawn shape is no longer the last placement; the panel's undo would not find it as recorded.
+      await forgetPlacement(recipe.seed);
       const bounds = own?.tag
         ? await replaceWhole(ctx, own.tag, own.nums.length, own.box, plan, recipe)
         : own
           ? await replaceElements(ctx, own.nums, plan, recipe)
           : await replaceLasso(ctx, plan, recipe);
       await selectRect(bounds, plan.strokes.length + plan.geometries.length);
+    } catch (e) {
+      busy.current = false;
+      fail(e);
+    }
+  };
+
+  /** Same cases as apply, without the insert: the shape's elements go and anything else selected stays. */
+  const remove = async () => {
+    if (!ctx || busy.current) {
+      return;
+    }
+    busy.current = true;
+    setMode('busy');
+    try {
+      const { own } = selection;
+      // The record is forgotten before the view closes: the device's own calls still run then, but nothing else should wait on them.
+      await forgetPlacement(selection.recipe.seed);
+      if (own?.tag) {
+        await deleteWhole(ctx, own.tag, own.nums.length, own.box);
+      } else {
+        await (own ? deleteElements(ctx, own.nums) : deleteLasso());
+        await closeView();
+      }
     } catch (e) {
       busy.current = false;
       fail(e);
@@ -105,7 +130,7 @@ export default function RedrawFlow({ selection }: { selection: Selection }) {
   return (
     <View style={styles.root}>
       {mode === 'strip' && (
-        <Strip shape={def} style={style} onStyle={setStyle} onExpand={noop} onClose={close} action={{ label: '✓', onPress: apply }} />
+        <Strip shape={def} style={style} onStyle={setStyle} onExpand={noop} onClose={close} onRemove={remove} action={{ label: '✓', onPress: apply }} />
       )}
     </View>
   );
