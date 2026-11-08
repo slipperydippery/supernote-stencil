@@ -2,32 +2,51 @@
  * Open shapes. The first polyline is the shaft, every further polyline is an
  * arrow head. Lines keep working on a degenerate box (zero height or width).
  * A box with left > right (or top > bottom) mirrors the shape, so an arrow
- * follows the drag that made it.
+ * follows the drag that made it. The straight shapes run from pen-down to
+ * pen-up, so a drag points them in any direction.
  */
-import { at, frame, head, type Frame } from './geom';
+import { at, frame, head, headWidth, type Frame } from './geom';
 import type { Pt, ShapeDef } from './types';
 
-/** Head angle for a shaft running along +x (or +y) of the frame, mirrored with it. */
+/**
+ * Shaft of a straight shape: pen-down corner to pen-up corner, or level through
+ * the middle of the box when its short side is no wider than an arrow head
+ * (with slack for hand-drawn ink). The snap keeps a nearly level drag level,
+ * and keeps a level arrow level on redraw, where the lasso box is the ink's
+ * bounds: head barbs and a minimum side give it height a shaft does not have.
+ */
+function shaft(f: Frame): [Pt, Pt] {
+  const snap = 1.25 * headWidth(Math.max(Math.abs(f.w), Math.abs(f.h)));
+  if (Math.abs(f.h) <= snap && Math.abs(f.w) >= Math.abs(f.h)) {
+    return [at(f, 0, 0.5), at(f, 1, 0.5)];
+  }
+  if (Math.abs(f.w) <= snap) {
+    return [at(f, 0.5, 0), at(f, 0.5, 1)];
+  }
+  return [at(f, 0, 0), at(f, 1, 1)];
+}
+
+/** Head angle for a shaft running along +x of the frame, mirrored with it. */
 const east = (f: Frame) => (f.w < 0 ? Math.PI : 0);
-const south = (f: Frame) => (f.h < 0 ? -Math.PI / 2 : Math.PI / 2);
+
+const angle = (a: Pt, b: Pt) => Math.atan2(b.y - a.y, b.x - a.x);
+
+/** Heads on a straight shaft are sized from its length, so a diagonal arrow is not sized from one side only. */
+const length = (a: Pt, b: Pt) => Math.hypot(b.x - a.x, b.y - a.y);
 
 export const ARROW: ShapeDef[] = [
+  {
+    id: 'line', family: 'arrow', label: 'Line', closed: false,
+    defaultSize: { w: 480, h: 0 }, keepAspect: false,
+    outline: box => [shaft(frame(box))],
+  },
   {
     id: 'arrow', family: 'arrow', label: 'Arrow', closed: false,
     defaultSize: { w: 480, h: 0 }, keepAspect: false,
     outline: box => {
       const f = frame(box);
-      const end = at(f, 1, 0.5);
-      return [[at(f, 0, 0.5), end], head(end, east(f), f)];
-    },
-  },
-  {
-    id: 'arrowDown', family: 'arrow', label: 'Arrow down', closed: false,
-    defaultSize: { w: 0, h: 300 }, keepAspect: false,
-    outline: box => {
-      const f = frame(box);
-      const end = at(f, 0.5, 1);
-      return [[at(f, 0.5, 0), end], head(end, south(f), f)];
+      const [start, end] = shaft(f);
+      return [[start, end], head(end, angle(start, end), f, length(start, end))];
     },
   },
   {
@@ -35,9 +54,8 @@ export const ARROW: ShapeDef[] = [
     defaultSize: { w: 480, h: 0 }, keepAspect: false,
     outline: box => {
       const f = frame(box);
-      const start = at(f, 0, 0.5);
-      const end = at(f, 1, 0.5);
-      return [[start, end], head(end, east(f), f), head(start, east(f) + Math.PI, f)];
+      const [start, end] = shaft(f);
+      return [[start, end], head(end, angle(start, end), f, length(start, end)), head(start, angle(end, start), f, length(start, end))];
     },
   },
   {

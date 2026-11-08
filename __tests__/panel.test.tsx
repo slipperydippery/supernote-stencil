@@ -24,7 +24,7 @@ describe('Panel', () => {
     const props = { onTab: noop, style: DEFAULT_STYLE, onStyle: noop, selected: null, onPick: noop, onClose: noop };
     expect(uniq(render(<Panel tab="basic" {...props} />))).toHaveLength(8);
     expect(uniq(render(<Panel tab="flow" {...props} />))).toHaveLength(8);
-    expect(uniq(render(<Panel tab="arrow" {...props} />))).toEqual(['cell-arrow', 'cell-arrowDown', 'cell-doubleArrow', 'cell-elbowArrow', 'cell-archArrow', 'cell-scoopArrow']);
+    expect(uniq(render(<Panel tab="arrow" {...props} />))).toEqual(['cell-line', 'cell-arrow', 'cell-doubleArrow', 'cell-elbowArrow', 'cell-archArrow', 'cell-scoopArrow']);
   });
 
   it('reports tab, style and pick', () => {

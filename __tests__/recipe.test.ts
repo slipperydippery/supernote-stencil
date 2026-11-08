@@ -29,6 +29,11 @@ describe('recipe', () => {
     expect(parseRecipe('{"v":1,"shape":"rectangle","style":{"weight":"thin","line":"solid","fill":"cross","look":"hand"},"seed":1}')).toBeNull();
   });
 
+  it('reads a recipe written before GH-45 naming arrowDown as an arrow, keeping its flip', () => {
+    const old = '{"v":1,"shape":"arrowDown","style":{"weight":"thin","line":"solid","fill":"none","tone":"dark","look":"hand"},"seed":5,"flip":{"y":true}}';
+    expect(parseRecipe(old)).toEqual({ v: 1, shape: 'arrow', style: { ...DEFAULT_STYLE, weight: 'thin', look: 'hand' }, seed: 5, flip: { y: true } });
+  });
+
   it('round-trips flip, omitting the key when absent', () => {
     const withFlip: Recipe = { ...r, flip: { x: true } };
     expect(parseRecipe(serializeRecipe(withFlip))).toEqual(withFlip);

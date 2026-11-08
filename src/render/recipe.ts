@@ -1,4 +1,4 @@
-import { SHAPES, type ShapeId } from '../shapes';
+import { readShapeId, type ShapeId } from '../shapes';
 import { readStyle, TONE_GAP, type Style, type Tone } from './style';
 
 /**
@@ -58,9 +58,10 @@ export function parseRecipe(s: string | null | undefined): Recipe | null {
   }
   // Recipes written before GH-20 carry a four-key style; readStyle upgrades them.
   const style = readStyle(o.style);
+  // Recipes written before GH-45 may name arrowDown; readShapeId maps it to arrow.
+  const shape = readShapeId(o.shape);
   if (
-    typeof o.shape !== 'string' ||
-    !Object.prototype.hasOwnProperty.call(SHAPES, o.shape) ||
+    !shape ||
     !style ||
     typeof o.seed !== 'number' ||
     !Number.isFinite(o.seed)
@@ -79,7 +80,7 @@ export function parseRecipe(s: string | null | undefined): Recipe | null {
   }
   return {
     v: 1,
-    shape: o.shape,
+    shape,
     style,
     seed: o.seed,
     ...(flip ? { flip } : {}),

@@ -40,11 +40,8 @@ function atLeast(lo: number, hi: number, min: number): [number, number] {
   return [c - min / 2, c + min / 2];
 }
 
-/** Arrow-family shapes that read the same whichever way they are drawn. */
-const SYMMETRIC: ReadonlySet<ShapeId> = new Set(['doubleArrow']);
-
 /** Arrow-family shapes whose outline mirrors with a reversed drag (README contract "style and recipe", `flip`). */
-const DIRECTIONAL: ReadonlySet<ShapeId> = new Set(['arrow', 'arrowDown', 'elbowArrow', 'archArrow', 'scoopArrow']);
+const DIRECTIONAL: ReadonlySet<ShapeId> = new Set(['line', 'arrow', 'doubleArrow', 'elbowArrow', 'archArrow', 'scoopArrow']);
 
 /**
  * Set when a directional arrow's box (a drag, or a rising shape's tap) runs right-to-left or bottom-to-top, so a
@@ -67,15 +64,12 @@ export function flipFor(def: ShapeDef, dragged: Box): Recipe['flip'] {
 
 /**
  * `dragged` runs from pen-down (left, top) to pen-up (right, bottom). Arrows
- * keep the exact swept box, with no minimum side, and directional ones run
- * from pen-down to pen-up: a reversed side mirrors the outline. Everything else
+ * keep the exact swept box, with no minimum side, and run from pen-down to
+ * pen-up: a reversed side mirrors the outline. Everything else
  * is normalised, squared for keepAspect and at least MIN_SIDE on each side.
  */
 export function fitBox(def: ShapeDef, dragged: Box): Box {
   if (def.family === 'arrow') {
-    if (SYMMETRIC.has(def.id)) {
-      return normalise(dragged);
-    }
     return { ...dragged };
   }
   const n = normalise(dragged);

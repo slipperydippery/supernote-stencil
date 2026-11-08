@@ -2,7 +2,7 @@ import { renderShape } from '../src/render/plan';
 import { DEFAULT_STYLE } from '../src/render/style';
 import { SHAPES } from '../src/shapes';
 import { defaultBoxAt, fitBox, flipFor, MIN_SIDE, toPagePx } from '../src/ui/placement';
-import { applyFlip } from '../src/ui/redraw';
+import { applyFlip, redrawBox } from '../src/ui/redraw';
 
 const ctx = { notePath: '/n', page: 0, width: 1920, height: 2560, unit: 1 };
 const point = (x: number, y: number) => ({ left: x, top: y, right: x, bottom: y });
@@ -51,8 +51,57 @@ describe('fitBox', () => {
   it('keeps the exact swept box for arrows, with the drag direction', () => {
     const dragLeft = { left: 800, top: 300, right: 200, bottom: 304 };
     expect(fitBox(SHAPES.arrow, dragLeft)).toEqual({ left: 800, top: 300, right: 200, bottom: 304 });
-    expect(fitBox(SHAPES.doubleArrow, dragLeft)).toEqual({ left: 200, top: 300, right: 800, bottom: 304 });
-    expect(fitBox(SHAPES.arrowDown, { left: 104, top: 900, right: 100, bottom: 300 })).toEqual({ left: 104, top: 900, right: 100, bottom: 300 });
+    expect(fitBox(SHAPES.doubleArrow, dragLeft)).toEqual(dragLeft);
+    expect(fitBox(SHAPES.line, dragLeft)).toEqual(dragLeft);
+  });
+
+  it('runs line, arrow and double arrow straight from pen-down to pen-up, in every direction', () => {
+    const drags = [
+      { left: 200, top: 300, right: 800, bottom: 300 },
+      { left: 800, top: 300, right: 200, bottom: 300 },
+      { left: 300, top: 200, right: 300, bottom: 800 },
+      { left: 300, top: 800, right: 300, bottom: 200 },
+      { left: 200, top: 300, right: 800, bottom: 600 },
+      { left: 800, top: 600, right: 200, bottom: 300 },
+      { left: 200, top: 600, right: 800, bottom: 300 },
+    ];
+    for (const def of [SHAPES.line, SHAPES.arrow, SHAPES.doubleArrow]) {
+      for (const d of drags) {
+        const shaft = renderShape(def, fitBox(def, d), DEFAULT_STYLE, 1).geometries[0].points;
+        expect([def.id, shaft[0], shaft[shaft.length - 1]]).toEqual([def.id, { x: d.left, y: d.top }, { x: d.right, y: d.bottom }]);
+      }
+    }
+  });
+
+  it('a diagonal arrow head sits on the shaft line and is sized from the shaft length', () => {
+    const d = { left: 200, top: 200, right: 800, bottom: 800 };
+    const [shaft, head] = SHAPES.arrow.outline(fitBox(SHAPES.arrow, d));
+    const [b1, tip, b2] = head;
+    expect(tip).toEqual(shaft[1]);
+    // The barbs are mirror images about the 45° shaft: their midpoint lies on it.
+    expect((b1.x + b2.x) / 2).toBeCloseTo((b1.y + b2.y) / 2, 6);
+    expect(Math.hypot(b1.x - tip.x, b1.y - tip.y)).toBeCloseTo(0.09 * Math.hypot(600, 600), 6);
+  });
+
+  it('keeps a nearly level drag level, through the middle of the box', () => {
+    for (const def of [SHAPES.line, SHAPES.arrow, SHAPES.doubleArrow]) {
+      const [shaft] = def.outline({ left: 200, top: 300, right: 800, bottom: 330 });
+      expect([def.id, shaft]).toEqual([def.id, [{ x: 200, y: 315 }, { x: 800, y: 315 }]]);
+      const [up] = def.outline({ left: 330, top: 800, right: 300, bottom: 200 });
+      expect([def.id, up]).toEqual([def.id, [{ x: 315, y: 800 }, { x: 315, y: 200 }]]);
+    }
+  });
+
+  it('redraws a level arrow level into its lasso box, which the head and the minimum side make taller than the shaft', () => {
+    const placed = renderShape(SHAPES.arrow, { left: 200, top: 300, right: 800, bottom: 300 }, DEFAULT_STYLE, 1);
+    const box = redrawBox(placed.bounds, 600);
+    const [shaft] = SHAPES.arrow.outline(box);
+    expect(shaft[0].y).toBeCloseTo(300, 6);
+    expect(shaft[1].y).toBeCloseTo(300, 6);
+  });
+
+  it('draws a line as a bare shaft', () => {
+    expect(SHAPES.line.outline({ left: 100, top: 100, right: 580, bottom: 100 })).toHaveLength(1);
   });
 
   it('runs elbow, arch and scoop arrows from pen-down to the tip at pen-up', () => {
@@ -80,8 +129,8 @@ describe('fitBox', () => {
     expect(plan.bounds.right).toBe(800);
   });
 
-  it('an arrowDown dragged upwards points up', () => {
-    const plan = renderShape(SHAPES.arrowDown, fitBox(SHAPES.arrowDown, { left: 100, top: 900, right: 100, bottom: 300 }), DEFAULT_STYLE, 1);
+  it('an arrow dragged upwards points up', () => {
+    const plan = renderShape(SHAPES.arrow, fitBox(SHAPES.arrow, { left: 100, top: 900, right: 100, bottom: 300 }), DEFAULT_STYLE, 1);
     const head = plan.geometries[1];
     expect(head.points.every(p => p.y >= 300)).toBe(true);
     expect(plan.bounds.top).toBe(300);
@@ -105,8 +154,9 @@ describe('flipFor', () => {
     expect(flipFor(SHAPES.elbowArrow, { left: 800, top: 600, right: 200, bottom: 300 })).toEqual({ x: true, y: true });
   });
 
-  it('treats doubleArrow as non-directional: no flip even when reversed', () => {
-    expect(flipFor(SHAPES.doubleArrow, { left: 800, top: 300, right: 200, bottom: 300 })).toBeUndefined();
+  it('records the diagonal of a double arrow and a line', () => {
+    expect(flipFor(SHAPES.doubleArrow, { left: 200, top: 600, right: 800, bottom: 300 })).toEqual({ y: true });
+    expect(flipFor(SHAPES.line, { left: 800, top: 300, right: 200, bottom: 600 })).toEqual({ x: true });
   });
 });
 
@@ -125,6 +175,10 @@ describe('redraw direction fidelity', () => {
     ['scoopArrow', SHAPES.scoopArrow, 'x-reversed', { left: 800, top: 300, right: 200, bottom: 600 }],
     ['scoopArrow', SHAPES.scoopArrow, 'y-reversed', { left: 200, top: 600, right: 800, bottom: 300 }],
     ['scoopArrow', SHAPES.scoopArrow, 'both axes reversed', { left: 800, top: 600, right: 200, bottom: 300 }],
+    ['arrow', SHAPES.arrow, 'x-reversed diagonal', { left: 800, top: 300, right: 200, bottom: 600 }],
+    ['arrow', SHAPES.arrow, 'upward', { left: 300, top: 800, right: 300, bottom: 200 }],
+    ['doubleArrow', SHAPES.doubleArrow, 'y-reversed diagonal', { left: 200, top: 600, right: 800, bottom: 300 }],
+    ['line', SHAPES.line, 'y-reversed diagonal', { left: 200, top: 600, right: 800, bottom: 300 }],
   ])('a %s redraws pointing the same way it was dragged (%s)', (_, def, __, dragged) => {
     const placed = renderShape(def, fitBox(def, dragged), DEFAULT_STYLE, 1);
     const flip = flipFor(def, dragged);

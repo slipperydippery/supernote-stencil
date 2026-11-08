@@ -25,7 +25,7 @@ The armed shape with its pin, the style glyphs and a close mark sit in a strip a
 
 ### Place
 
-Tap the page to place the shape at its default size under the pen, or drag to render it into the swept box. The plugin closes with the new shape lassoed. Shape, style and tab are remembered, so the next open goes straight to the strip. Tap the pin on the strip's shape tile to unpin it, and the next open shows the shape picker instead.
+Tap the page to place the shape at its default size under the pen, or drag to render it into the swept box. Line, arrow and double arrow run from pen-down to pen-up, so a drag points them any way; a drag within about a head's width of level or upright comes out level or upright, and a tap places them level, left to right. The plugin closes with the new shape lassoed. Shape, style and tab are remembered, so the next open goes straight to the strip. Tap the pin on the strip's shape tile to unpin it, and the next open shows the shape picker instead.
 
 ### Wrap
 
@@ -69,6 +69,7 @@ Five chip groups set the style of the next insert and are remembered across sess
 - Redraw takes one Stencil shape at a time; a selection holding two is refused.
 - Default sizes and panel width are tuned for a Manta; the code scales by page width but hasn't been tried on a Nomad.
 - Stencil inserts have no native undo (page-element writes clear the undo history). The SDK's only undo-keeping insert, `insertGeometry`, takes one clean geometry and no `userData`, so strokes can never keep undo and clean shapes would lose their recipe. Delete on the redraw strip and **Undo last** in the panel stand in for it.
+- Down arrows placed before GH-45 redraw as the merged arrow and keep their direction.
 - Arrows placed before 1.0.0 carry no `flip` in their recipe and redraw left-to-right regardless of how they were drawn.
 - Redraw deletes and re-inserts, so like every Stencil insert it cannot be undone natively.
 - **Undo last** keeps one record, for the most recent placement only.
@@ -132,6 +133,7 @@ Device run of 2026-11-05 on a Manta, firmware current at that date. Observed on 
 | delete outside the lasso, GH-30 spike | unbinds the note | `getElements` on the open note matched the lasso (same page px, same `numInPage`). `deletePageElements` on 36 elements, 21 of them outside the lasso, returned success, then the next call failed with 105 "No note-related app is bound" and the note closed to the file menu. Lassoing the whole shape first (view closed, `lassoElements`), then deleting only what that lasso holds, works, and so does `insertPageElements` with the plugin view closed. |
 | undo last placement, GH-41 device run | pass | From the panel, with no lasso beforehand: `closePluginView`, `lassoElements` on the recorded box, `getLassoElements` filtered by recipe seed, `deletePageElements` removed the shape and left the other ink. |
 | reopen the view on refusal, GH-41 device run | pass | After a native move the count check failed; `setLassoBoxState(2)` then `PluginManager.showPluginView()` in the same call chain brought the plugin view back with the notice. |
+| arrows in every direction, GH-45 device run | pass | Dragged arrows, double arrows and lines run from pen-down to pen-up in every direction; a nearly level or upright drag snaps level or upright; a tap places line and arrow level. A down arrow placed with 1.1.0 (recipe shape `arrowDown`) redrew upright and kept its direction. |
 
 Design consequence (decided 2026-11-05): tap or drag to place with a transparent full-screen layer, wrap a selection, and a lasso-toolbar "redraw" that regenerates a Stencil shape at the lasso box from a recipe stored in `Element.userData`. Centred insert is dropped.
 

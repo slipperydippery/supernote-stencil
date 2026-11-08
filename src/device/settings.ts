@@ -1,6 +1,6 @@
 import { FileUtils, PluginManager } from 'sn-plugin-lib';
 import { COVERAGE_MAX, COVERAGE_MIN, DEFAULT_STYLE, readStyle, STYLE_KEYS, TONE_COVERAGE, TONES, type Style, type Tone } from '../render/style';
-import { FAMILIES, SHAPES, type Family, type ShapeId } from '../shapes';
+import { FAMILIES, readShapeId, type Family, type ShapeId } from '../shapes';
 import { PADDING_STEPS, WRAP_PADDING } from '../ui/wrap';
 
 /** `coverage` is the hatch ink coverage per tone in percent, `wrapPadding` the wrap margin in Manta px. */
@@ -40,7 +40,7 @@ function decode(out: Settings, key: Key, raw: string): void {
       return;
     }
     case 'lastShape':
-      out.lastShape = Object.prototype.hasOwnProperty.call(SHAPES, raw) ? (raw as ShapeId) : null;
+      out.lastShape = readShapeId(raw);
       return;
     case 'tab':
       out.tab = FAMILIES.includes(raw as Family) ? (raw as Family) : DEFAULT_SETTINGS.tab;
