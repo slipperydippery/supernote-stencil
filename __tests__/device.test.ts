@@ -147,8 +147,8 @@ import { clearLastPlacement, currentPage, DEFAULT_SETTINGS, deleteElements, dele
 import type { Settings } from '../src/device';
 
 const ctx = { notePath: '/note/a.note', page: 2, width: 1920, height: 2560, unit: 1 };
-const recipe: Recipe = { v: 1, shape: 'rectangle', style: { weight: 'normal', line: 'solid', fill: 'none', tone: 'dark', look: 'hand' }, seed: 7 };
-const tag = '{"v":1,"shape":"rectangle","style":{"weight":"normal","line":"solid","fill":"none","tone":"dark","look":"hand"},"seed":7}';
+const recipe: Recipe = { v: 1, shape: 'rectangle', style: { weight: 'normal', line: 'solid', fill: 'none', tone: 'dark', ink: 'black', look: 'hand' }, seed: 7 };
+const tag = '{"v":1,"shape":"rectangle","style":{"weight":"normal","line":"solid","fill":"none","tone":"dark","ink":"black","look":"hand"},"seed":7}';
 
 const plan: Plan = {
   strokes: [
@@ -571,7 +571,7 @@ describe('currentPage', () => {
 describe('settings', () => {
   it('round-trips', async () => {
     const s: Settings = {
-      style: { weight: 'thick', line: 'dashed', fill: 'hatch', tone: 'light', look: 'hand' },
+      style: { weight: 'thick', line: 'dashed', fill: 'hatch', tone: 'light', ink: 'dark', look: 'hand' },
       lastShape: 'decision',
       tab: 'flow',
       armOnOpen: false,
@@ -593,7 +593,7 @@ describe('settings', () => {
 
   it('stores every value as a plain directory name', async () => {
     await saveSettings({
-      style: { weight: 'thick', line: 'dashed', fill: 'hatch', tone: 'light', look: 'hand' },
+      style: { weight: 'thick', line: 'dashed', fill: 'hatch', tone: 'light', ink: 'dark', look: 'hand' },
       lastShape: 'decision',
       tab: 'flow',
       armOnOpen: false,
@@ -605,21 +605,40 @@ describe('settings', () => {
       '/plugin/settings/armOnOpen/off',
       '/plugin/settings/coverage/3-8-66',
       '/plugin/settings/lastShape/decision',
-      '/plugin/settings/style/thick-dashed-hatch-light-hand',
+      '/plugin/settings/style/thick-dashed-hatch-light-dark-hand',
       '/plugin/settings/tab/flow',
       '/plugin/settings/wrapPadding/48',
     ]);
   });
 
-  it('upgrades a four-word style saved before tone', async () => {
+  const storeStyle = async (word: string) => {
     await saveSettings(DEFAULT_SETTINGS);
     for (const d of [...mockState.dirs]) {
       if (d.startsWith('/plugin/settings/style/')) {
         mockState.dirs.delete(d);
       }
     }
-    mockState.dirs.add('/plugin/settings/style/thick-dashed-light-hand');
-    expect((await loadSettings()).style).toEqual({ weight: 'thick', line: 'dashed', fill: 'solid', tone: 'light', look: 'hand' });
+    mockState.dirs.add(`/plugin/settings/style/${word}`);
+  };
+
+  it('upgrades a four-word style saved before tone', async () => {
+    await storeStyle('thick-dashed-light-hand');
+    expect((await loadSettings()).style).toEqual({ weight: 'thick', line: 'dashed', fill: 'solid', tone: 'light', ink: 'black', look: 'hand' });
+  });
+
+  it('reads a five-word style saved before ink as ink black', async () => {
+    await storeStyle('normal-solid-none-dark-hand');
+    expect((await loadSettings()).style).toEqual({ weight: 'normal', line: 'solid', fill: 'none', tone: 'dark', ink: 'black', look: 'hand' });
+  });
+
+  it('falls back to the default style on six words with an unknown ink', async () => {
+    await storeStyle('normal-solid-none-dark-grey-hand');
+    expect((await loadSettings()).style).toEqual(DEFAULT_SETTINGS.style);
+  });
+
+  it('round-trips line none', async () => {
+    await storeStyle('thin-none-solid-light-light-clean');
+    expect((await loadSettings()).style).toEqual({ weight: 'thin', line: 'none', fill: 'solid', tone: 'light', ink: 'light', look: 'clean' });
   });
 
   it('reads a last shape saved as arrowDown before GH-45 as arrow', async () => {
