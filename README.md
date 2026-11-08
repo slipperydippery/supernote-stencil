@@ -54,12 +54,13 @@ The shape panel has **Undo last** in its header while the last shape placed on t
 
 ## Style bar glyphs
 
-Five chip groups set the style of the next insert and are remembered across sessions:
+Six chip groups set the style of the next insert and are remembered across sessions:
 
 - **Weight** — thin, normal, thick: stroke width.
-- **Line** — solid, dashed, dotted: dashes render as separate strokes, so a dashed shape is several elements that redraw together.
+- **Line** — solid, dashed, dotted, none: dashes render as separate strokes, so a dashed shape is several elements that redraw together. None is a fill with no outline; not offered for arrows or with fill none.
 - **Fill** — none, solid, hatch, cross: interior fill, drawn as extra strokes.
 - **Tone** — light, dark, black: the grey of a solid fill, or the spacing of the hatch lines (about 68, 25 and 13 px by default; see Settings). Spacing is a constant, not a share of the box, so one style reads the same on every size.
+- **Ink** — light, dark, black: the grey of the outline and arrow heads, pen 201, 157, 0.
 - **Look** — clean, hand: constant-width geometry, or a hand-drawn stroke with a pressure-mapped width profile.
 
 ## Limitations and deferred work

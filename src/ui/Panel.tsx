@@ -63,7 +63,7 @@ export default function Panel({ tab, onTab, style, onStyle, selected, onPick, on
           </Pressable>
         ))}
       </View>
-      <StyleBar style={style} onStyle={onStyle} size="panel" />
+      <StyleBar style={style} onStyle={onStyle} size="panel" open={activeTab === 'arrow'} />
       <View style={styles.grid}>
         {shapesIn(activeTab).map(def => (
           <Pressable

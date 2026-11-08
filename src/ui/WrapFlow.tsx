@@ -7,6 +7,7 @@ import { hatchGap, type Style } from '../render/style';
 import type { Box, Family, ShapeDef } from '../shapes';
 import Message from './Message';
 import Panel from './Panel';
+import { forShape } from './styleRules';
 import { union, wrapBox } from './wrap';
 
 type Mode = 'loading' | 'panel' | 'busy' | 'error';
@@ -55,7 +56,8 @@ export default function WrapFlow({ selection }: { selection: Box }) {
     busy.current = true;
     setMode('busy');
     try {
-      const { style, coverage, wrapPadding } = latest.current;
+      const { coverage, wrapPadding } = latest.current;
+      const style = forShape(latest.current.style, def.closed);
       const gap = hatchGap(coverage[style.tone]);
       const box = wrapBox(def, selection, wrapPadding * ctx.unit);
       const seed = Math.floor(Math.random() * 1_000_000);

@@ -11,6 +11,7 @@ import { defaultBoxAt, fitBox, flipFor } from './placement';
 import PlacementLayer, { type PlaceKind } from './PlacementLayer';
 import SettingsPanel from './SettingsPanel';
 import Strip from './Strip';
+import { forShape } from './styleRules';
 
 type Mode = 'loading' | 'panel' | 'settings' | 'strip' | 'busy' | 'error';
 
@@ -55,7 +56,7 @@ export default function PlaceFlow() {
   const pick = (def: ShapeDef) => {
     setShape(def);
     setMode('strip');
-    persist({ ...latest.current, lastShape: def.id });
+    persist({ ...latest.current, lastShape: def.id, style: forShape(latest.current.style, def.closed) });
   };
   const setStyle = (style: Style) => persist({ ...latest.current, style });
   const setTab = (tab: Family) => persist({ ...latest.current, tab });

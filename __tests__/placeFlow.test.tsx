@@ -104,6 +104,25 @@ it('arms the strip on pick and persists the shape', async () => {
   expect(has(r, 'strip-icon-decision')).toBe(true);
 });
 
+describe('a remembered line none on pick', () => {
+  const bare = { ...DEFAULT_STYLE, fill: 'solid', line: 'none' } as const;
+
+  it('draws an arrow solid and persists that', async () => {
+    device.settings = { ...device.settings, style: bare };
+    const r = await open();
+    await press(r, 'tab-arrow');
+    await press(r, 'cell-arrow');
+    expect(mocked.saveSettings).toHaveBeenLastCalledWith(expect.objectContaining({ style: { ...bare, line: 'solid' }, lastShape: 'arrow' }));
+  });
+
+  it('keeps it for a rectangle', async () => {
+    device.settings = { ...device.settings, style: bare };
+    const r = await open();
+    await press(r, 'cell-rectangle');
+    expect(mocked.saveSettings).toHaveBeenLastCalledWith(expect.objectContaining({ style: bare, lastShape: 'rectangle' }));
+  });
+});
+
 it('persists a style chip in the strip and shows it selected', async () => {
   device.settings = { ...device.settings, lastShape: 'rectangle' };
   const r = await open();

@@ -40,7 +40,7 @@ export default function Strip({ shape, style, onStyle, onExpand, onClose, action
         )}
       </View>
       <View style={styles.bar}>
-        <StyleBar style={style} onStyle={onStyle} size="strip" />
+        <StyleBar style={style} onStyle={onStyle} size="strip" open={!shape.closed} />
       </View>
       {onRemove && (
         <Pressable testID="strip-remove" accessibilityRole="button" accessibilityLabel="Delete this shape" onPress={onRemove} style={styles.mark}>
