@@ -2,6 +2,7 @@ import React from 'react';
 import { PixelRatio, View } from 'react-native';
 import { act, create, type ReactTestRenderer } from 'react-test-renderer';
 import { device, deviceMock } from '../test/device-mock';
+import { pressableNode } from '../test/helpers';
 
 jest.mock('../src/device', () => require('../test/device-mock').deviceMock());
 jest.mock('../src/render/plan', () => {
@@ -128,7 +129,7 @@ it('persists a style chip in the strip and shows it selected', async () => {
   const r = await open();
   await press(r, 'chip-line-dashed');
   expect(mocked.saveSettings).toHaveBeenLastCalledWith({ ...device.settings, style: { ...DEFAULT_STYLE, line: 'dashed' }, lastShape: 'rectangle', tab: 'basic', armOnOpen: true });
-  expect(r.root.findAllByProps({ testID: 'chip-line-dashed' })[0].props.accessibilityState).toEqual({ selected: true });
+  expect(pressableNode(r, 'chip-line-dashed').props.accessibilityState).toEqual({ selected: true });
 });
 
 it('expands the panel from the strip preview', async () => {
