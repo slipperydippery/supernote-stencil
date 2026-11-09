@@ -3,7 +3,7 @@ import { PixelRatio, StyleSheet, View } from 'react-native';
 import { clearLastPlacement, closeView, currentPage, DEFAULT_SETTINGS, insertPlan, loadLastPlacement, loadSettings, recordPlacement, saveSettings, selectRect, undoPlacement, type LastPlacement, type PageCtx, type Settings } from '../device';
 import { renderShape } from '../render/plan';
 import { gapField, type Recipe } from '../render/recipe';
-import { hatchGap, type Style } from '../render/style';
+import { hatchGap, WEIGHT_WIDTH, widthPx, type Style } from '../render/style';
 import { SHAPES, type Box, type Family, type ShapeDef } from '../shapes';
 import Message from './Message';
 import Panel from './Panel';
@@ -124,6 +124,7 @@ export default function PlaceFlow() {
       <PlacementLayer
         enabled={mode === 'strip'}
         shape={shape}
+        line={widthPx(WEIGHT_WIDTH[settings.style.weight])}
         scale={PixelRatio.get()}
         onPlace={place}
         onDismiss={openGroup ? () => setOpenGroup(null) : undefined}

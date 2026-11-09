@@ -1,6 +1,7 @@
 import { renderShape } from '../src/render/plan';
-import { DEFAULT_STYLE } from '../src/render/style';
-import { SHAPES } from '../src/shapes';
+import { DEFAULT_STYLE, WEIGHT_WIDTH, WEIGHTS, widthPx } from '../src/render/style';
+import { SHAPES, type Box } from '../src/shapes';
+import { headLength, NORMAL_LINE } from '../src/shapes/geom';
 import { defaultBoxAt, fitBox, flipFor, MIN_SIDE, toPagePx } from '../src/ui/placement';
 import { applyFlip, redrawBox } from '../src/ui/redraw';
 
@@ -73,14 +74,32 @@ describe('fitBox', () => {
     }
   });
 
-  it('a diagonal arrow head sits on the shaft line and is sized from the shaft length', () => {
+  it('a diagonal arrow head sits on the shaft line and is sized from the line width', () => {
     const d = { left: 200, top: 200, right: 800, bottom: 800 };
     const [shaft, head] = SHAPES.arrow.outline(fitBox(SHAPES.arrow, d));
     const [b1, tip, b2] = head;
     expect(tip).toEqual(shaft[1]);
     // The barbs are mirror images about the 45° shaft: their midpoint lies on it.
     expect((b1.x + b2.x) / 2).toBeCloseTo((b1.y + b2.y) / 2, 6);
-    expect(Math.hypot(b1.x - tip.x, b1.y - tip.y)).toBeCloseTo(0.09 * Math.hypot(600, 600), 6);
+    expect(Math.hypot(b1.x - tip.x, b1.y - tip.y)).toBeCloseTo(headLength(NORMAL_LINE), 6);
+  });
+
+  it('sizes heads by weight, not by length, and caps them at a third of a short shaft', () => {
+    const barb = (box: Box, line: number) => {
+      const [, [b1, tip]] = SHAPES.arrow.outline(box, line);
+      return Math.hypot(b1.x - tip.x, b1.y - tip.y);
+    };
+    const short = { left: 100, top: 100, right: 580, bottom: 100 };
+    const long = { left: 100, top: 100, right: 1600, bottom: 100 };
+    expect(barb(long, 6)).toBeCloseTo(barb(short, 6), 6);
+    const [thin, normal, thick] = WEIGHTS.map(w => barb(short, widthPx(WEIGHT_WIDTH[w])));
+    expect(thin).toBeLessThan(normal);
+    expect(normal).toBeLessThan(thick);
+    expect(barb({ left: 100, top: 100, right: 160, bottom: 100 }, 10)).toBeCloseTo(20, 6);
+  });
+
+  it('draws the normal weight when no line width is given', () => {
+    expect(NORMAL_LINE).toBe(widthPx(WEIGHT_WIDTH.normal));
   });
 
   it('keeps a nearly level drag level, through the middle of the box', () => {
@@ -93,8 +112,21 @@ describe('fitBox', () => {
   });
 
   it('redraws a level arrow level into its lasso box, which the head and the minimum side make taller than the shaft', () => {
-    const placed = renderShape(SHAPES.arrow, { left: 200, top: 300, right: 800, bottom: 300 }, DEFAULT_STYLE, 1);
-    const box = redrawBox(placed.bounds, 600);
+    for (const weight of WEIGHTS) {
+      const style = { ...DEFAULT_STYLE, weight };
+      for (const right of [260, 800, 1700]) {
+        const placed = renderShape(SHAPES.arrow, { left: 200, top: 300, right, bottom: 300 }, style, 1);
+        const box = redrawBox(placed.bounds, WEIGHT_WIDTH[weight]);
+        const [shaft] = SHAPES.arrow.outline(box, widthPx(WEIGHT_WIDTH[weight]));
+        expect([weight, right, shaft[0].y, shaft[1].y]).toEqual([weight, right, 300, 300]);
+      }
+    }
+  });
+
+  it('redraws a level arrow placed when heads were sized by length level', () => {
+    // A 1500 px arrow's lasso box from then: 135 px barbs at ±0.18π off the shaft, plus the pen.
+    const spread = 0.09 * 1500 * Math.sin(Math.PI * 0.82);
+    const box = redrawBox({ left: 200, top: 300 - spread - 3, right: 1700, bottom: 300 + spread + 3 }, 600);
     const [shaft] = SHAPES.arrow.outline(box);
     expect(shaft[0].y).toBeCloseTo(300, 6);
     expect(shaft[1].y).toBeCloseTo(300, 6);

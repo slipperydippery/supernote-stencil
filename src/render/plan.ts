@@ -7,7 +7,7 @@ import type { Box, Pt, ShapeDef, ShapeId } from '../shapes/types';
 import { dashSamples } from './dashes';
 import { fillStrokes, headStrokes } from './fills';
 import { handDrawnOutline, LOCKED, peakThickness, pressureFromWidth, resample, splitStrokes, toXY } from './hand';
-import { firmwareWidth, INK_COLOR, TONE_GAP, WEIGHT_WIDTH, type Line, type Style } from './style';
+import { firmwareWidth, INK_COLOR, TONE_GAP, WEIGHT_WIDTH, widthPx, type Line, type Style } from './style';
 
 export type StrokeSpec = { points: Pt[]; pressures: number[]; penType: 10 | 16; penColor: 0 | 157 | 201 | 254; thickness: number };
 export type GeoSpec = {
@@ -123,8 +123,8 @@ export function effectiveLine(def: ShapeDef, style: Style): Line {
 
 /** `gap` is the hatch spacing in page px; it defaults to the tone's built-in value. */
 export function renderShape(def: ShapeDef, box: Box, style: Style, seed: number, gap = TONE_GAP[style.tone]): Plan {
-  const outlines = def.outline(box);
   const width = WEIGHT_WIDTH[style.weight];
+  const outlines = def.outline(box, widthPx(width));
   const ink = INK_COLOR[style.ink];
   const line = effectiveLine(def, style);
   const strokes: StrokeSpec[] = [];
