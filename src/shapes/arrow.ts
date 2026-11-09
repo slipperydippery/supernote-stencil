@@ -5,7 +5,7 @@
  * follows the drag that made it. The straight shapes run from pen-down to
  * pen-up, so a drag points them in any direction.
  */
-import { at, frame, head, headWidth, type Frame } from './geom';
+import { at, frame, head, headWidth, NORMAL_LINE, type Frame } from './geom';
 import type { Pt, ShapeDef } from './types';
 
 /**
@@ -14,9 +14,12 @@ import type { Pt, ShapeDef } from './types';
  * (with slack for hand-drawn ink). The snap keeps a nearly level drag level,
  * and keeps a level arrow level on redraw, where the lasso box is the ink's
  * bounds: head barbs and a minimum side give it height a shaft does not have.
+ * The slack also grows with the drag (about 7°), which keeps arrows placed when
+ * heads were sized by length level on redraw.
  */
-function shaft(f: Frame): [Pt, Pt] {
-  const snap = 1.25 * headWidth(Math.max(Math.abs(f.w), Math.abs(f.h)));
+function shaft(f: Frame, line: number): [Pt, Pt] {
+  const span = Math.max(Math.abs(f.w), Math.abs(f.h));
+  const snap = 1.25 * Math.max(headWidth(line), 2 * Math.max(24, 0.09 * span) * Math.sin(Math.PI * 0.82));
   if (Math.abs(f.h) <= snap && Math.abs(f.w) >= Math.abs(f.h)) {
     return [at(f, 0, 0.5), at(f, 1, 0.5)];
   }
@@ -31,40 +34,40 @@ const east = (f: Frame) => (f.w < 0 ? Math.PI : 0);
 
 const angle = (a: Pt, b: Pt) => Math.atan2(b.y - a.y, b.x - a.x);
 
-/** Heads on a straight shaft are sized from its length, so a diagonal arrow is not sized from one side only. */
+/** A straight shaft caps its heads by its length, so a short diagonal arrow is not capped by one side only. */
 const length = (a: Pt, b: Pt) => Math.hypot(b.x - a.x, b.y - a.y);
 
 export const ARROW: ShapeDef[] = [
   {
     id: 'line', family: 'arrow', label: 'Line', closed: false,
     defaultSize: { w: 480, h: 0 }, keepAspect: false,
-    outline: box => [shaft(frame(box))],
+    outline: (box, line = NORMAL_LINE) => [shaft(frame(box), line)],
   },
   {
     id: 'arrow', family: 'arrow', label: 'Arrow', closed: false,
     defaultSize: { w: 480, h: 0 }, keepAspect: false,
-    outline: box => {
+    outline: (box, line = NORMAL_LINE) => {
       const f = frame(box);
-      const [start, end] = shaft(f);
-      return [[start, end], head(end, angle(start, end), f, length(start, end))];
+      const [start, end] = shaft(f, line);
+      return [[start, end], head(end, angle(start, end), line, f, length(start, end))];
     },
   },
   {
     id: 'doubleArrow', family: 'arrow', label: 'Double arrow', closed: false,
     defaultSize: { w: 480, h: 0 }, keepAspect: false,
-    outline: box => {
+    outline: (box, line = NORMAL_LINE) => {
       const f = frame(box);
-      const [start, end] = shaft(f);
-      return [[start, end], head(end, angle(start, end), f, length(start, end)), head(start, angle(end, start), f, length(start, end))];
+      const [start, end] = shaft(f, line);
+      return [[start, end], head(end, angle(start, end), line, f, length(start, end)), head(start, angle(end, start), line, f, length(start, end))];
     },
   },
   {
     id: 'elbowArrow', family: 'arrow', label: 'Elbow arrow', closed: false,
     defaultSize: { w: 480, h: 240 }, keepAspect: false,
-    outline: box => {
+    outline: (box, line = NORMAL_LINE) => {
       const f = frame(box);
       const end = at(f, 1, 1);
-      return [[at(f, 0, 0), at(f, 0.5, 0), at(f, 0.5, 1), end], head(end, east(f), f)];
+      return [[at(f, 0, 0), at(f, 0.5, 0), at(f, 0.5, 1), end], head(end, east(f), line, f)];
     },
   },
   {
@@ -72,7 +75,7 @@ export const ARROW: ShapeDef[] = [
     defaultSize: { w: 480, h: 240 }, keepAspect: false, rising: true,
     // Runs from (left, top) to (right, bottom), i.e. pen-down to pen-up like
     // elbowArrow: steep off pen-down, levelling off into the head.
-    outline: box => {
+    outline: (box, line = NORMAL_LINE) => {
       const f = frame(box);
       const p: Pt[] = [];
       for (let i = 0; i <= 40; i++) {
@@ -80,14 +83,14 @@ export const ARROW: ShapeDef[] = [
         p.push(at(f, t, Math.sin((t * Math.PI) / 2)));
       }
       const a = Math.atan2(p[40].y - p[39].y, p[40].x - p[39].x);
-      return [p, head(p[40], a, f)];
+      return [p, head(p[40], a, line, f)];
     },
   },
   {
     id: 'scoopArrow', family: 'arrow', label: 'Scoop arrow', closed: false,
     defaultSize: { w: 480, h: 240 }, keepAspect: false, rising: true,
     // archArrow bowed the other way: flat off pen-down, steepening into the head.
-    outline: box => {
+    outline: (box, line = NORMAL_LINE) => {
       const f = frame(box);
       const p: Pt[] = [];
       for (let i = 0; i <= 40; i++) {
@@ -95,7 +98,7 @@ export const ARROW: ShapeDef[] = [
         p.push(at(f, t, 1 - Math.sin(((1 - t) * Math.PI) / 2)));
       }
       const a = Math.atan2(p[40].y - p[39].y, p[40].x - p[39].x);
-      return [p, head(p[40], a, f)];
+      return [p, head(p[40], a, line, f)];
     },
   },
 ];

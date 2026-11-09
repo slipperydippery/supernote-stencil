@@ -13,6 +13,8 @@ type Props = {
   enabled: boolean;
   /** Armed shape; a drag previews its outline in the box it will be rendered into. */
   shape: ShapeDef | null;
+  /** Outline width in page px, which sizes the preview's arrow heads. */
+  line: number;
   /** dp → page px, PixelRatio.get(). */
   scale: number;
   /** Page px. A tap is a zero box at pen-down; a drag runs from pen-down (left, top) to pen-up (right, bottom), not normalised. */
@@ -26,7 +28,7 @@ type Dp = { x: number; y: number };
 const at = (e: GestureResponderEvent): Dp => ({ x: e.nativeEvent.pageX, y: e.nativeEvent.pageY });
 const far = (a: Dp, b: Dp) => Math.hypot(b.x - a.x, b.y - a.y) >= DRAG_THRESHOLD_DP;
 
-export default function PlacementLayer({ enabled, shape, scale, onPlace, onDismiss }: Props) {
+export default function PlacementLayer({ enabled, shape, line, scale, onPlace, onDismiss }: Props) {
   const down = useRef<Dp | null>(null);
   const [band, setBand] = useState<Pt[][] | null>(null);
 
@@ -37,7 +39,7 @@ export default function PlacementLayer({ enabled, shape, scale, onPlace, onDismi
     const a = toPagePx(d, scale);
     const b = toPagePx(p, scale);
     const toDp = (q: Pt) => ({ x: q.x / scale, y: q.y / scale });
-    return shape.outline(fitBox(shape, { left: a.x, top: a.y, right: b.x, bottom: b.y })).map(pl => pl.map(toDp));
+    return shape.outline(fitBox(shape, { left: a.x, top: a.y, right: b.x, bottom: b.y }), line).map(pl => pl.map(toDp));
   };
 
   const release = (e: GestureResponderEvent) => {

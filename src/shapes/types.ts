@@ -13,6 +13,9 @@ export type ShapeDef = {
   keepAspect: boolean;
   /** true for arch and scoop arrows: a tap places them, and the palette shows them, rising from bottom-left to top-right. */
   rising?: boolean;
-  /** Polylines in page px filling `box`. For closed shapes the first polyline is the fill boundary and ends on its first point. */
-  outline(box: Box): Pt[][];
+  /**
+   * Polylines in page px filling `box`. For closed shapes the first polyline is the fill boundary and ends on its first point.
+   * `line` is the outline's width in page px, which sizes arrow heads; it defaults to the normal weight.
+   */
+  outline(box: Box, line?: number): Pt[][];
 };

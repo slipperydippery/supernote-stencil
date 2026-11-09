@@ -8,7 +8,7 @@ const ev = (x: number, y: number) => ({ nativeEvent: { pageX: x, pageY: y } });
 function render(props: Partial<React.ComponentProps<typeof PlacementLayer>>): ReactTestRenderer {
   let r!: ReactTestRenderer;
   act(() => {
-    r = create(<PlacementLayer enabled shape={SHAPES.rectangle} scale={2} onPlace={jest.fn()} {...props} />);
+    r = create(<PlacementLayer enabled shape={SHAPES.rectangle} line={6} scale={2} onPlace={jest.fn()} {...props} />);
   });
   return r;
 }

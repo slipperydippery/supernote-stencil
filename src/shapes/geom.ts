@@ -50,22 +50,25 @@ export function ellipse(f: Frame, n: number): Pt[][] {
   return [p];
 }
 
-/** Barb length of an arrow head on a shape `span` px long. */
-export function headLength(span: number): number {
-  return Math.max(24, 0.09 * span);
+/** Page px of a normal-weight line: the line width an outline is drawn for when the caller gives none. */
+export const NORMAL_LINE = 6;
+
+/** Barb length of an arrow head on a `line` px wide shaft `reach` px long: set by the pen, held to a third of the shaft. */
+export function headLength(line: number, reach = Infinity): number {
+  return Math.min(18 + 4 * line, reach / 3);
 }
 
 /** Distance across a head's two barb ends. */
-export function headWidth(span: number): number {
-  return 2 * headLength(span) * Math.sin(Math.PI * 0.82);
+export function headWidth(line: number, reach = Infinity): number {
+  return 2 * headLength(line, reach) * Math.sin(Math.PI * 0.82);
 }
 
 /**
  * Arrow head: two barbs at ±0.82π from the shaft direction, as an open three-point polyline through the tip.
- * Sized from `span`, by default the longer side of the frame.
+ * Sized from the line width; `reach`, by default the longer side of the frame, only caps it on a short arrow.
  */
-export function head(tip: Pt, angle: number, f: Frame, span = Math.max(Math.abs(f.w), Math.abs(f.h))): Pt[] {
-  const len = headLength(span);
+export function head(tip: Pt, angle: number, line: number, f: Frame, reach = Math.max(Math.abs(f.w), Math.abs(f.h))): Pt[] {
+  const len = headLength(line, reach);
   const a1 = angle + Math.PI * 0.82;
   const a2 = angle - Math.PI * 0.82;
   return [
